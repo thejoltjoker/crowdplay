@@ -1,34 +1,25 @@
-import { useEffect, useState } from "react";
-import reactLogo from "./assets/react.svg";
-import appLogo from "/favicon.svg";
-import PWABadge from "./PWABadge.tsx";
-import "./App.css";
-import FingerprintJS from "@fingerprintjs/fingerprintjs";
+import Header from "@/components/header";
+import Leaderboard from "@/components/leaderboard";
+import Navbar from "@/components/navbar";
+import { UserProvider } from "@/lib/providers/user-provider";
 
 function App() {
-  const [fpHash, setFpHash] = useState("");
-
-  // create and set the fingerprint as soon as
-  // the component mounts
-  useEffect(() => {
-    const setFp = async () => {
-      const fp = await FingerprintJS.load();
-
-      const { visitorId } = await fp.get();
-
-      setFpHash(visitorId);
-    };
-
-    setFp();
-  }, []);
-
   return (
-    <>
-      <div>
-        <h1>This is the fingerprint hash</h1>
-        <h3>Hash: {fpHash}</h3>
+    <UserProvider>
+      <div className="flex flex-col h-full items-center">
+        <Header />
+        <main className="w-full max-w-screen-sm gap-4 flex flex-col h-full justify-between p-4">
+          <Leaderboard />
+          {/* <QuizBoolean />
+          <progress
+            className="progress w-full progress-primary"
+            value="40"
+            max="100"
+          ></progress> */}
+        </main>
       </div>
-    </>
+      <Navbar />
+    </UserProvider>
   );
 }
 

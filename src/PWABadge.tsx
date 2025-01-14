@@ -1,6 +1,6 @@
-import './PWABadge.css'
-
 import { useRegisterSW } from 'virtual:pwa-register/react'
+
+import './PWABadge.css'
 
 function PWABadge() {
   // periodic sync is disabled, change the value to enable it, the period is in milliseconds
@@ -8,12 +8,13 @@ function PWABadge() {
   const period = 0
 
   const {
-    
+
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(swUrl, r) {
-      if (period <= 0) return
+      if (period <= 0)
+        return
       if (r?.active?.state === 'activated') {
         registerPeriodicSync(period, swUrl, r)
       }
@@ -28,7 +29,6 @@ function PWABadge() {
   })
 
   function close() {
-    
     setNeedRefresh(false)
   }
 
@@ -39,8 +39,7 @@ function PWABadge() {
         <div className="PWABadge-toast">
           <div className="PWABadge-message">
             <span id="toast-message">New content available, click on reload button to update.</span>
-              
-              
+
           </div>
           <div className="PWABadge-buttons">
             <button className="PWABadge-toast-button" onClick={() => updateServiceWorker(true)}>Reload</button>
@@ -58,7 +57,8 @@ export default PWABadge
  * This function will register a periodic sync check every hour, you can modify the interval as needed.
  */
 function registerPeriodicSync(period: number, swUrl: string, r: ServiceWorkerRegistration) {
-  if (period <= 0) return
+  if (period <= 0)
+    return
 
   setInterval(async () => {
     if ('onLine' in navigator && !navigator.onLine)
