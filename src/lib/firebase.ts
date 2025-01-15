@@ -1,21 +1,24 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import env from "@/env";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyCqWvmfMNCJcW80CqvCXV8lPRnFxEQDego",
-  authDomain: "crowdplay-e207f.firebaseapp.com",
-  projectId: "crowdplay-e207f",
-  storageBucket: "crowdplay-e207f.firebasestorage.app",
-  messagingSenderId: "167339284503",
-  appId: "1:167339284503:web:820a3fe0e0f817e43b2452",
-  measurementId: "G-TGVVHSS2YY"
+  apiKey: env.VITE_API_KEY,
+  authDomain: env.VITE_AUTH_DOMAIN,
+  projectId: env.VITE_PROJECT_ID,
+  storageBucket: env.VITE_STORAGE_BUCKET,
+  messagingSenderId: env.VITE_MESSAGING_SENDER_ID,
+  appId: env.VITE_APP_ID,
+  measurementId: env.VITE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+export const app = initializeApp(firebaseConfig);
+export const analytics = getAnalytics(app);
+export const db = getFirestore(app);
+
+if (import.meta.env.DEV) {
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
