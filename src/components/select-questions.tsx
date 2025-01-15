@@ -1,8 +1,9 @@
 import React, { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { addQuestionsToGame } from "@/lib/firebase";
 
-const SelectQuestions = ({ gameCode, onQuestionsSelected }) => {
+function SelectQuestions({ gameCode, onQuestionsSelected }) {
   const [questions, setQuestions] = useState([
     { text: "What is 2+2?", options: ["1", "2", "3", "4"], correct: "4" },
     {
@@ -39,6 +40,6 @@ const SelectQuestions = ({ gameCode, onQuestionsSelected }) => {
       </Button>
     </div>
   );
-};
+}
 
 export default SelectQuestions;

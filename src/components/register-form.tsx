@@ -1,3 +1,10 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { Link, useNavigate } from "react-router-dom";
+import { z } from "zod";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,19 +25,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { auth, signInWithGoogle } from "@/lib/firebase";
 import { useAuth } from "@/providers/auth";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { createUserWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
-import { z } from "zod";
 
 const formSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
 });
 
-export const RegisterForm = () => {
+export function RegisterForm() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const form = useForm<z.infer<typeof formSchema>>({
@@ -46,13 +47,14 @@ export const RegisterForm = () => {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         values.email,
-        values.password
+        values.password,
       );
 
       const user = userCredential?.user;
       console.log("Successfully registered:", user);
       navigate("/login");
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Registration error:", error);
     }
   };
@@ -124,7 +126,8 @@ export const RegisterForm = () => {
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
-              Already have an account?{" "}
+              Already have an account?
+              {" "}
               <Link to="/login" className="underline">
                 Login
               </Link>
@@ -134,5 +137,5 @@ export const RegisterForm = () => {
       </CardContent>
     </Card>
   );
-};
+}
 export default RegisterForm;

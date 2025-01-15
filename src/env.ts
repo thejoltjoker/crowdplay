@@ -10,7 +10,7 @@ const EnvSchema = z.object({
   VITE_MEASUREMENT_ID: z.string(),
 });
 
-export type env = z.infer<typeof EnvSchema>;
+export type Env = z.infer<typeof EnvSchema>;
 
 const { data: env, error } = EnvSchema.safeParse(import.meta.env);
 

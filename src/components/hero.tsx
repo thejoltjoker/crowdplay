@@ -35,22 +35,24 @@ const Hero: React.FC = () => {
                 viewBox="0 0 800 800"
                 className="size-full text-muted-foreground opacity-20"
               >
-                {Array.from(Array(720).keys()).map((dot, index, array) => {
-                  const angle = 0.2 * index;
-                  const scalar = 40 + index * (360 / array.length);
-                  const x = Math.round(Math.cos(angle) * scalar);
-                  const y = Math.round(Math.sin(angle) * scalar);
+                {Array.from(Array.from({ length: 720 }).keys()).map(
+                  (dot, index, array) => {
+                    const angle = 0.2 * index;
+                    const scalar = 40 + index * (360 / array.length);
+                    const x = Math.round(Math.cos(angle) * scalar);
+                    const y = Math.round(Math.sin(angle) * scalar);
 
-                  return (
-                    <circle
-                      key={index}
-                      r={(3 * index) / array.length}
-                      cx={400 + x}
-                      cy={400 + y}
-                      opacity={1 - Math.sin(angle)}
-                    />
-                  );
-                })}
+                    return (
+                      <circle
+                        key={index}
+                        r={(3 * index) / array.length}
+                        cx={400 + x}
+                        cy={400 + y}
+                        opacity={1 - Math.sin(angle)}
+                      />
+                    );
+                  },
+                )}
               </svg>
             </div>
             <div className="absolute left-[8%] top-[10%] flex aspect-[5/6] w-[38%] justify-center rounded-lg border border-border bg-accent"></div>

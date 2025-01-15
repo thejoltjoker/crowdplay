@@ -1,14 +1,16 @@
-import { Button } from "@/components/ui/button";
-import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Game } from "@/lib/schemas/game";
 import { doc, onSnapshot } from "firebase/firestore";
+import { Loader2, Trophy } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+
+import type { Game } from "@/lib/schemas/game";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/firebase";
 import { gameConverter } from "@/lib/firebase/firestore";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Trophy } from "lucide-react";
 
-const ResultsPage = () => {
+function ResultsPage() {
   const { id: gameCode } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -16,7 +18,8 @@ const ResultsPage = () => {
   const [gameData, setGameData] = useState<Game | null>(null);
 
   useEffect(() => {
-    if (!gameCode) return;
+    if (!gameCode)
+      return;
 
     const unsubscribe = onSnapshot(
       doc(db, "games", gameCode).withConverter(gameConverter),
@@ -35,7 +38,7 @@ const ResultsPage = () => {
         console.error("Error fetching game:", error);
         setError("Error fetching game data");
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -71,7 +74,7 @@ const ResultsPage = () => {
 
   // Sort players by score in descending order
   const sortedPlayers = Object.values(gameData.players).sort(
-    (a, b) => b.score - a.score
+    (a, b) => b.score - a.score,
   );
 
   return (
@@ -83,12 +86,16 @@ const ResultsPage = () => {
         <CardContent className="space-y-8">
           <div className="text-center text-muted-foreground">
             <p>
-              Game Code:{" "}
+              Game Code:
+              {" "}
               <span className="font-mono font-bold text-foreground">
                 {gameCode}
               </span>
             </p>
-            <p>Total Questions: {gameData.questions.length}</p>
+            <p>
+              Total Questions:
+              {gameData.questions.length}
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -99,7 +106,8 @@ const ResultsPage = () => {
               >
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-semibold min-w-[2rem]">
-                    {index + 1}.
+                    {index + 1}
+                    .
                   </span>
                   <div>
                     <p className="font-medium">
@@ -111,7 +119,13 @@ const ResultsPage = () => {
                       )}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Score: {player.score} / {gameData.questions.length}
+                      Score:
+                      {" "}
+                      {player.score}
+                      {" "}
+                      /
+                      {" "}
+                      {gameData.questions.length}
                     </p>
                   </div>
                 </div>
@@ -129,6 +143,6 @@ const ResultsPage = () => {
       </Card>
     </div>
   );
-};
+}
 
 export default ResultsPage;

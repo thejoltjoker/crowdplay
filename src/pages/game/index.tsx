@@ -1,24 +1,19 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Game } from "@/lib/schemas/game";
-import { Question } from "@/lib/schemas/question";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { gameConverter } from "@/lib/firebase/firestore";
-import { useAuth } from "@/providers/auth";
 import { Loader2, Users } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import { joinGame } from "@/lib/firebase/firestore";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
-const GamePage = () => {
+import type { Game } from "@/lib/schemas/game";
+import type { Question } from "@/lib/schemas/question";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { db } from "@/lib/firebase";
+import { gameConverter, joinGame } from "@/lib/firebase/firestore";
+import { useAuth } from "@/providers/auth";
+
+function GamePage() {
   const { id: gameCode } = useParams();
   const navigate = useNavigate();
   const { user, username } = useAuth();
@@ -30,7 +25,8 @@ const GamePage = () => {
   const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
-    if (!gameCode) return;
+    if (!gameCode)
+      return;
 
     const unsubscribe = onSnapshot(
       doc(db, "games", gameCode).withConverter(gameConverter),
@@ -56,7 +52,8 @@ const GamePage = () => {
             await joinGame(gameCode, user.uid, username);
             // Don't set game data here, it will be updated by the next snapshot
             return;
-          } catch (error) {
+          }
+          catch (error) {
             console.error("Error joining game:", error);
             setError("Error joining game");
             setLoading(false);
@@ -88,7 +85,7 @@ const GamePage = () => {
         console.error("Error fetching game:", error);
         setError("Error fetching game data");
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -108,26 +105,24 @@ const GamePage = () => {
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
 
-      // Record the player's answer and update their score
+      // Record the player's answer without updating score yet
       const isCorrect = optionIndex === currentQuestion.correctOption;
-      const updatedPlayers = { ...gameData.players };
-      updatedPlayers[user.uid].score += isCorrect ? 1 : 0;
-      updatedPlayers[user.uid].hasAnswered = true;
-
       await updateDoc(gameRef, {
-        [`players.${user.uid}.score`]: updatedPlayers[user.uid].score,
         [`players.${user.uid}.hasAnswered`]: true,
+        [`players.${user.uid}.lastAnswerCorrect`]: isCorrect,
       });
 
       setHasAnswered(true);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error submitting answer:", error);
       setError("Error submitting answer");
     }
   };
 
   const handleNextQuestion = async () => {
-    if (!gameCode || !user || !gameData || !currentQuestion) return;
+    if (!gameCode || !user || !gameData || !currentQuestion)
+      return;
 
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
@@ -149,7 +144,8 @@ const GamePage = () => {
       if (isLastQuestion) {
         navigate(`/results/${gameCode}`);
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error moving to next question:", error);
       setError("Error moving to next question");
     }
@@ -179,20 +175,27 @@ const GamePage = () => {
     );
   }
 
-  const isHost =
-    Object.values(gameData.players).find((p) => p.isHost)?.id === user?.uid;
-  const answeredCount = Object.values(gameData.players).filter(
-    (p) => p.hasAnswered
-  ).length;
-  const totalPlayers = Object.keys(gameData.players).length;
-  const answeredPercentage = (answeredCount / totalPlayers) * 100;
+  const isHost
+    = Object.values(gameData.players).find(p => p.isHost)?.id === user?.uid;
+  const activePlayers = Object.values(gameData.players).filter(
+    p => !p.isHost,
+  );
+  const answeredCount = activePlayers.filter(p => p.hasAnswered).length;
+  const totalPlayers = activePlayers.length;
+  const answeredPercentage
+    = totalPlayers > 0 ? (answeredCount / totalPlayers) * 100 : 0;
 
   return (
     <div className="container mx-auto py-8">
       <Card>
         <CardHeader>
           <CardTitle>
-            Question {gameData.currentQuestionIndex + 1} of{" "}
+            Question
+            {" "}
+            {gameData.currentQuestionIndex + 1}
+            {" "}
+            of
+            {" "}
             {gameData.questions.length}
           </CardTitle>
         </CardHeader>
@@ -200,61 +203,64 @@ const GamePage = () => {
           <div className="text-center">
             <p className="text-2xl font-medium mb-2">{currentQuestion.text}</p>
             <p className="text-sm text-muted-foreground">
-              Time limit: {currentQuestion.timeLimit}s
+              Time limit:
+              {" "}
+              {currentQuestion.timeLimit}
+              s
             </p>
           </div>
 
-          {!hasAnswered ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {currentQuestion.options?.map((option, index) => (
-                <Button
-                  key={index}
-                  onClick={() => handleAnswer(index)}
-                  variant="outline"
-                  className="p-8 text-lg h-auto whitespace-normal"
-                  size="lg"
-                >
-                  {option}
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center space-y-4">
-              <p className="text-lg font-medium">
-                Waiting for other players...
-              </p>
-              <div className="flex items-center gap-2 justify-center text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>
-                  {answeredCount} of {totalPlayers} answered
-                </span>
-              </div>
-              <Progress value={answeredPercentage} className="w-full" />
-            </div>
-          )}
+          {!hasAnswered
+            ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentQuestion.options?.map((option, index) => (
+                    <Button
+                      key={index}
+                      onClick={() => handleAnswer(index)}
+                      variant="outline"
+                      className="p-8 text-lg h-auto whitespace-normal"
+                      size="lg"
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </div>
+              )
+            : (
+                <div className="text-center space-y-4">
+                  <p className="text-lg font-medium">
+                    Waiting for other players...
+                  </p>
+                  <div className="flex items-center gap-2 justify-center text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    <span>
+                      {answeredCount}
+                      {" "}
+                      of
+                      {totalPlayers}
+                      {" "}
+                      answered
+                    </span>
+                  </div>
+                  <Progress value={answeredPercentage} className="w-full" />
+                </div>
+              )}
 
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Players: {Object.keys(gameData.players).length}</span>
             <span>
-              Your Score: {gameData.players[user?.uid ?? ""]?.score ?? 0}
+              Players:
+              {totalPlayers}
+            </span>
+            <span>
+              Your Score:
+              {" "}
+              {gameData.players[user?.uid ?? ""]?.score ?? 0}
             </span>
           </div>
         </CardContent>
-        {isHost && (
-          <CardFooter className="flex justify-end pt-6 border-t">
-            <Button
-              onClick={handleNextQuestion}
-              disabled={answeredCount < totalPlayers}
-            >
-              {gameData.currentQuestionIndex === gameData.questions.length - 1
-                ? "End Game"
-                : "Next Question"}
-            </Button>
-          </CardFooter>
-        )}
       </Card>
     </div>
   );
-};
+}
 
 export default GamePage;

@@ -1,7 +1,8 @@
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Heart } from "lucide-react"
-import Image from "next/image"
+import { Heart } from "lucide-react";
+import Image from "next/image";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 // Mock data for photo posts
 const posts = [
@@ -41,14 +42,14 @@ const posts = [
     image: "/placeholder.svg?height=400&width=600",
     likes: 154,
   },
-]
+];
 
 export function PhotoGrid() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Photo Gallery</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {posts.map((post) => (
+        {posts.map(post => (
           <Card key={post.id} className="overflow-hidden">
             <CardContent className="p-0">
               <div className="relative aspect-square">
@@ -63,7 +64,11 @@ export function PhotoGrid() {
             </CardContent>
             <CardFooter className="flex justify-between items-center p-4">
               <h2 className="font-semibold text-lg">{post.title}</h2>
-              <Button variant="ghost" size="sm" className="flex items-center space-x-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center space-x-1"
+              >
                 <Heart className="w-4 h-4" />
                 <span>{post.likes}</span>
               </Button>
@@ -72,5 +77,5 @@ export function PhotoGrid() {
         ))}
       </div>
     </div>
-  )
+  );
 }

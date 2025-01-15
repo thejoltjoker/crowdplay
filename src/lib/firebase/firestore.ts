@@ -1,28 +1,21 @@
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  QueryConstraint,
-  QueryDocumentSnapshot,
-  setDoc,
-  updateDoc,
-  FieldValue,
-  where,
-} from "firebase/firestore";
-import { z } from "zod";
-import { Game, gameSchema } from "@/lib/schemas/game";
-import { Player } from "@/lib/schemas/player";
-import { Question, questionSchema } from "@/lib/schemas/question";
+import type { QueryDocumentSnapshot } from "firebase/firestore";
+
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { nanoid } from "nanoid";
+
+import type { Game } from "@/lib/schemas/game";
+import type { Question } from "@/lib/schemas/question";
+
+import { db } from "@/lib/firebase";
+import { gameSchema } from "@/lib/schemas/game";
+import { questionSchema } from "@/lib/schemas/question";
 
 export const gameConverter = {
   toFirestore: (data: Game) => {
     try {
       return gameSchema.parse(data);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Invalid game data:", error);
       throw error;
     }
@@ -36,7 +29,8 @@ export const questionConverter = {
   toFirestore: (data: Question) => {
     try {
       return questionSchema.parse(data);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Invalid question data:", error);
       throw error;
     }
@@ -73,21 +67,21 @@ const defaultQuestions: Omit<Question, "id">[] = [
   },
 ];
 
-export const fetchQuestions = async (): Promise<Question[]> => {
+export async function fetchQuestions(): Promise<Question[]> {
   // For testing, return default questions with generated IDs
-  return defaultQuestions.map((q) => ({
+  return defaultQuestions.map(q => ({
     ...q,
     id: nanoid(),
   }));
-};
+}
 
-export const addQuestion = async (
-  question: Omit<Question, "id">
-): Promise<Question> => {
+export async function addQuestion(
+  question: Omit<Question, "id">,
+): Promise<Question> {
   try {
     const questionId = nanoid();
     const questionRef = doc(db, "questions", questionId).withConverter(
-      questionConverter
+      questionConverter,
     );
     const newQuestion: Question = {
       ...question,
@@ -95,21 +89,22 @@ export const addQuestion = async (
     };
     await setDoc(questionRef, newQuestion);
     return newQuestion;
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error adding question:", error);
     throw error;
   }
-};
+}
 
-const generateGameCode = () => {
+function generateGameCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
-};
+}
 
-export const createGame = async (
+export async function createGame(
   hostId: string,
   hostName: string,
-  customGameCode?: string
-): Promise<string> => {
+  customGameCode?: string,
+): Promise<string> {
   try {
     const gameCode = customGameCode || generateGameCode();
 
@@ -122,7 +117,7 @@ export const createGame = async (
     }
 
     // Add default questions with generated IDs
-    const questions = defaultQuestions.map((q) => ({
+    const questions = defaultQuestions.map(q => ({
       ...q,
       id: nanoid(),
     }));
@@ -138,6 +133,7 @@ export const createGame = async (
           score: 0,
           isHost: true,
           hasAnswered: false,
+          lastAnswerCorrect: false,
         },
       },
       questions,
@@ -147,17 +143,18 @@ export const createGame = async (
 
     await setDoc(gameRef, game);
     return gameCode;
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error creating game:", error);
     throw error;
   }
-};
+}
 
-export const joinGame = async (
+export async function joinGame(
   gameCode: string,
   playerId: string,
-  playerName: string
-): Promise<void> => {
+  playerName: string,
+): Promise<void> {
   try {
     const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
     const gameDoc = await getDoc(gameRef);
@@ -185,8 +182,9 @@ export const joinGame = async (
         hasAnswered: false,
       },
     });
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error joining game:", error);
     throw error;
   }
-};
+}

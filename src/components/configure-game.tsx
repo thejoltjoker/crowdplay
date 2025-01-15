@@ -1,9 +1,10 @@
+import { configureGame } from "@/lib/firestore"; // Firebase logic
 import React, { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { configureGame } from "@/lib/firestore"; // Firebase logic
 
-const ConfigureGame = ({ gameCode, onConfigured }) => {
+function ConfigureGame({ gameCode, onConfigured }) {
   const [numQuestions, setNumQuestions] = useState(5);
   const [timePerQuestion, setTimePerQuestion] = useState(30);
 
@@ -21,7 +22,7 @@ const ConfigureGame = ({ gameCode, onConfigured }) => {
           <Input
             type="number"
             value={numQuestions}
-            onChange={(e) => setNumQuestions(Number(e.target.value))}
+            onChange={e => setNumQuestions(Number(e.target.value))}
           />
         </div>
         <div>
@@ -31,13 +32,13 @@ const ConfigureGame = ({ gameCode, onConfigured }) => {
           <Input
             type="number"
             value={timePerQuestion}
-            onChange={(e) => setTimePerQuestion(Number(e.target.value))}
+            onChange={e => setTimePerQuestion(Number(e.target.value))}
           />
         </div>
         <Button onClick={handleSaveConfig}>Save Configuration</Button>
       </div>
     </div>
   );
-};
+}
 
 export default ConfigureGame;

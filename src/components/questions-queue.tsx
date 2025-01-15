@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-
-import { Question } from "@/lib/schemas";
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+
+import type { Question } from "@/lib/schemas";
+
+import { Button } from "@/components/ui/button";
 
 interface QuestionsQueueProps {
   questions: Question[];
@@ -11,12 +11,12 @@ interface QuestionsQueueProps {
   currentQuestionIndex?: number;
 }
 
-export const QuestionsQueue = ({
+export function QuestionsQueue({
   questions,
   onRemoveQuestion,
   onMoveQuestion,
   currentQuestionIndex = -1,
-}: QuestionsQueueProps) => {
+}: QuestionsQueueProps) {
   if (questions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
@@ -39,7 +39,11 @@ export const QuestionsQueue = ({
           <div className="flex-1 mr-4">
             <p className="font-medium">{question.text}</p>
             <p className="text-sm text-muted-foreground">
-              {question.options.length} options · {question.timeLimit}s
+              {question.options.length}
+              {" "}
+              options ·
+              {question.timeLimit}
+              s
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -72,6 +76,6 @@ export const QuestionsQueue = ({
       ))}
     </ul>
   );
-};
+}
 
 export default QuestionsQueue;

@@ -6,6 +6,7 @@ export const playerSchema = z.object({
   score: z.number().default(0),
   isHost: z.boolean().default(false),
   hasAnswered: z.boolean().default(false),
+  lastAnswerCorrect: z.boolean().default(false),
 });
 
 export type Player = z.infer<typeof playerSchema>;

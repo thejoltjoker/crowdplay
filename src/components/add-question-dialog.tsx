@@ -1,3 +1,9 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus, Trash2 } from "lucide-react";
+import React from "react";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,14 +23,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { zodResolver } from "@hookform/resolvers/zod";
-import React from "react";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Plus, Trash2 } from "lucide-react";
 
 // Dynamic schema based on number of options
-const createQuestionSchema = (optionCount: number) => {
+function createQuestionSchema(optionCount: number) {
   const optionFields: Record<string, z.ZodString> = {};
   const validOptions: string[] = [];
 
@@ -40,18 +41,18 @@ const createQuestionSchema = (optionCount: number) => {
     correctAnswer: z
       .string()
       .refine(
-        (val) => val >= "0" && val < optionCount.toString(),
-        "Please select a valid option"
+        val => val >= "0" && val < optionCount.toString(),
+        "Please select a valid option",
       ),
   });
-};
+}
 
 // Update the QuestionFormValues type to include dynamic options
-type QuestionFormValues = {
+interface QuestionFormValues {
   questionText: string;
   correctAnswer?: string;
   [key: `option${number}`]: string;
-};
+}
 
 export interface AddQuestionDialogProps {
   onSubmit: (values: any) => void;
@@ -144,7 +145,10 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                     <FormItem>
                       <div className="flex items-center gap-2">
                         <div className="flex-1">
-                          <FormLabel>Option {index + 1}</FormLabel>
+                          <FormLabel>
+                            Option
+                            {index + 1}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               placeholder={`Enter option ${index + 1}`}
@@ -204,7 +208,9 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                             <RadioGroupItem value={index.toString()} />
                           </FormControl>
                           <FormLabel className="font-normal">
-                            Option {index + 1}
+                            Option
+                            {" "}
+                            {index + 1}
                           </FormLabel>
                         </FormItem>
                       ))}

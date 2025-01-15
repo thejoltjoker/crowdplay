@@ -1,7 +1,8 @@
+import { signInAnonymously, type User } from "firebase/auth";
+
 import { createContext, useContext, useEffect, useState } from "react";
-import { User } from "firebase/auth";
+
 import { auth } from "@/lib/firebase";
-import { signInAnonymously } from "firebase/auth";
 
 export interface AuthContextType {
   user: User | null;

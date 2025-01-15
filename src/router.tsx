@@ -1,8 +1,9 @@
-import App from "@/pages/app";
-import LandingPage from "@/pages/landing";
 import { createBrowserRouter } from "react-router-dom";
-import LobbyPage from "@/pages/lobby";
+
 import GamePage from "@/pages/game";
+import LandingPage from "@/pages/landing";
+import LobbyPage from "@/pages/lobby";
+
 import ResultsPage from "./pages/results";
 
 export const router = createBrowserRouter([

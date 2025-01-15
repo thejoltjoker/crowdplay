@@ -1,3 +1,10 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { Link, useNavigate } from "react-router-dom";
+import { z } from "zod";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,14 +25,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { auth, signInWithGoogle } from "@/lib/firebase";
 import { useAuth } from "@/providers/auth";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  signInWithEmailAndPassword
-} from "firebase/auth";
-import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
-import { z } from "zod";
 
 const formSchema = z.object({
   email: z.string().email(),
@@ -48,12 +47,13 @@ export function LoginForm() {
       const result = await signInWithEmailAndPassword(
         auth,
         values.email,
-        values.password
+        values.password,
       );
 
       const user = result?.user;
       console.log("Successfully logged in:", user);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Login error:", error);
     }
   };
@@ -126,7 +126,8 @@ export function LoginForm() {
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
-              Don&apos;t have an account?{" "}
+              Don&apos;t have an account?
+              {" "}
               <Link to="/register" className="underline">
                 Sign up
               </Link>

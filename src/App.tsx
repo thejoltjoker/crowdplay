@@ -1,8 +1,9 @@
-import { router } from "@/router";
 import { RouterProvider } from "react-router-dom";
-import { AuthProvider } from "@/providers/auth";
 
-const App = () => {
+import { AuthProvider } from "@/providers/auth";
+import { router } from "@/router";
+
+function App() {
   return (
     <AuthProvider>
       {/* // <GameProvider> */}
@@ -10,6 +11,6 @@ const App = () => {
       {/* //   </GameProvider> */}
     </AuthProvider>
   );
-};
+}
 
 export default App;
