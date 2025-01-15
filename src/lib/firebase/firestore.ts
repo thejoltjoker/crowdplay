@@ -46,17 +46,39 @@ export const questionConverter = {
   },
 };
 
+const defaultQuestions: Omit<Question, "id">[] = [
+  {
+    text: "What is the capital of France?",
+    options: ["London", "Berlin", "Paris", "Madrid"],
+    correctOption: 2,
+    timeLimit: 30,
+  },
+  {
+    text: "Which planet is known as the Red Planet?",
+    options: ["Venus", "Mars", "Jupiter", "Saturn"],
+    correctOption: 1,
+    timeLimit: 30,
+  },
+  {
+    text: "What is 2 + 2?",
+    options: ["3", "4", "5", "22"],
+    correctOption: 1,
+    timeLimit: 20,
+  },
+  {
+    text: "Who painted the Mona Lisa?",
+    options: ["Van Gogh", "Da Vinci", "Picasso", "Rembrandt"],
+    correctOption: 1,
+    timeLimit: 30,
+  },
+];
+
 export const fetchQuestions = async (): Promise<Question[]> => {
-  try {
-    const questionsRef = collection(db, "questions").withConverter(
-      questionConverter
-    );
-    const querySnapshot = await getDocs(questionsRef);
-    return querySnapshot.docs.map((doc) => doc.data());
-  } catch (error) {
-    console.error("Error fetching questions:", error);
-    throw error;
-  }
+  // For testing, return default questions with generated IDs
+  return defaultQuestions.map((q) => ({
+    ...q,
+    id: nanoid(),
+  }));
 };
 
 export const addQuestion = async (
@@ -79,81 +101,92 @@ export const addQuestion = async (
   }
 };
 
+const generateGameCode = () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+};
+
 export const createGame = async (
   hostId: string,
-  hostName: string
+  hostName: string,
+  customGameCode?: string
 ): Promise<string> => {
   try {
-    // Generate a 6-character game code
-    const gameCode = Math.random().toString(36).substr(2, 6).toUpperCase();
-    const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+    const gameCode = customGameCode || generateGameCode();
 
-    const player: Player = {
-      id: hostId,
-      name: hostName,
-      score: 0,
-      isHost: true,
-    };
+    // Check if game code already exists
+    const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+    const gameDoc = await getDoc(gameRef);
+
+    if (gameDoc.exists()) {
+      throw new Error("Game code already exists");
+    }
+
+    // Add default questions with generated IDs
+    const questions = defaultQuestions.map((q) => ({
+      ...q,
+      id: nanoid(),
+    }));
 
     const game: Game = {
       id: gameCode,
       joinCode: gameCode,
       status: "waiting",
-      currentQuestionIndex: 0,
-      questions: [],
       players: {
-        [hostId]: player,
+        [hostId]: {
+          id: hostId,
+          name: hostName,
+          score: 0,
+          isHost: true,
+          hasAnswered: false,
+        },
       },
-      createdAt: new Date().toISOString(),
+      questions,
+      currentQuestionIndex: 0,
+      allowLateJoin: false,
     };
 
-    console.log("Creating game with data:", game);
     await setDoc(gameRef, game);
-    console.log("Game created successfully:", gameCode);
-
-    // Verify the game was created
-    const gameSnap = await getDoc(gameRef);
-    if (!gameSnap.exists()) {
-      throw new Error("Game was not created successfully");
-    }
-    console.log("Game verified:", gameSnap.data());
-
     return gameCode;
   } catch (error) {
-    console.error("Error in createGame:", error);
+    console.error("Error creating game:", error);
     throw error;
   }
 };
 
 export const joinGame = async (
   gameCode: string,
-  userId: string,
-  userName: string
-): Promise<Game> => {
-  const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
-  const gameSnap = await getDoc(gameRef);
+  playerId: string,
+  playerName: string
+): Promise<void> => {
+  try {
+    const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+    const gameDoc = await getDoc(gameRef);
 
-  if (!gameSnap.exists()) {
-    throw new Error("Game not found");
+    if (!gameDoc.exists()) {
+      throw new Error("Game not found");
+    }
+
+    const game = gameDoc.data();
+
+    if (game.status === "finished") {
+      throw new Error("Game has already finished");
+    }
+
+    if (game.players[playerId]) {
+      throw new Error("Player already in game");
+    }
+
+    await updateDoc(gameRef, {
+      [`players.${playerId}`]: {
+        id: playerId,
+        name: playerName,
+        score: 0,
+        isHost: false,
+        hasAnswered: false,
+      },
+    });
+  } catch (error) {
+    console.error("Error joining game:", error);
+    throw error;
   }
-
-  const gameData = gameSnap.data();
-  if (gameData.status !== "waiting") {
-    throw new Error("Game has already started");
-  }
-
-  const player: Player = {
-    id: userId,
-    name: userName,
-    score: 0,
-    isHost: false,
-  };
-
-  // Add player to the game
-  const update = {
-    [`players.${userId}`]: player,
-  };
-
-  await updateDoc(gameRef, update);
-  return { ...gameData, players: { ...gameData.players, [userId]: player } };
 };

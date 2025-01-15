@@ -1,30 +1,40 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
 import { Game } from "@/lib/schemas/game";
 import { Question } from "@/lib/schemas/question";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { gameConverter } from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { joinGame } from "@/lib/firebase/firestore";
 
 const GamePage = () => {
   const { id: gameCode } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, username } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [gameData, setGameData] = useState<Game | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
+  const [hasAnswered, setHasAnswered] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
     if (!gameCode) return;
 
     const unsubscribe = onSnapshot(
       doc(db, "games", gameCode).withConverter(gameConverter),
-      (doc) => {
+      async (doc) => {
         if (!doc.exists()) {
           setError("Game not found");
           setLoading(false);
@@ -32,16 +42,39 @@ const GamePage = () => {
         }
 
         const data = doc.data();
+
+        // If user is not in the game yet, check if late join is allowed
+        if (user && username && !data.players[user.uid] && !isJoining) {
+          if (!data.allowLateJoin) {
+            setError("Late joining is not allowed for this game");
+            setLoading(false);
+            return;
+          }
+
+          try {
+            setIsJoining(true);
+            await joinGame(gameCode, user.uid, username);
+            // Don't set game data here, it will be updated by the next snapshot
+            return;
+          } catch (error) {
+            console.error("Error joining game:", error);
+            setError("Error joining game");
+            setLoading(false);
+            return;
+          }
+        }
+
         setGameData(data);
+
+        // Reset hasAnswered when question changes
+        if (data.currentQuestionIndex !== gameData?.currentQuestionIndex) {
+          setHasAnswered(false);
+        }
 
         // Set current question
         if (data.questions[data.currentQuestionIndex]) {
           const question = data.questions[data.currentQuestionIndex];
-          console.log("Current question:", question);
           setCurrentQuestion(question);
-        } else {
-          console.log("No question found at index:", data.currentQuestionIndex);
-          console.log("Available questions:", data.questions);
         }
 
         setLoading(false);
@@ -59,10 +92,18 @@ const GamePage = () => {
     );
 
     return () => unsubscribe();
-  }, [gameCode, navigate]);
+  }, [
+    gameCode,
+    navigate,
+    gameData?.currentQuestionIndex,
+    user,
+    username,
+    isJoining,
+  ]);
 
   const handleAnswer = async (optionIndex: number) => {
-    if (!gameCode || !user || !gameData || !currentQuestion) return;
+    if (!gameCode || !user || !gameData || !currentQuestion || hasAnswered)
+      return;
 
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
@@ -71,23 +112,46 @@ const GamePage = () => {
       const isCorrect = optionIndex === currentQuestion.correctOption;
       const updatedPlayers = { ...gameData.players };
       updatedPlayers[user.uid].score += isCorrect ? 1 : 0;
-
-      // Move to next question or end game
-      const nextQuestionIndex = gameData.currentQuestionIndex + 1;
-      const isLastQuestion = nextQuestionIndex >= gameData.questions.length;
+      updatedPlayers[user.uid].hasAnswered = true;
 
       await updateDoc(gameRef, {
         [`players.${user.uid}.score`]: updatedPlayers[user.uid].score,
+        [`players.${user.uid}.hasAnswered`]: true,
+      });
+
+      setHasAnswered(true);
+    } catch (error) {
+      console.error("Error submitting answer:", error);
+      setError("Error submitting answer");
+    }
+  };
+
+  const handleNextQuestion = async () => {
+    if (!gameCode || !user || !gameData || !currentQuestion) return;
+
+    try {
+      const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+      const nextQuestionIndex = gameData.currentQuestionIndex + 1;
+      const isLastQuestion = nextQuestionIndex >= gameData.questions.length;
+
+      // Reset all players' hasAnswered status and create update object
+      const updates: Record<string, any> = {
         currentQuestionIndex: nextQuestionIndex,
         status: isLastQuestion ? "finished" : "playing",
+      };
+
+      Object.keys(gameData.players).forEach((playerId) => {
+        updates[`players.${playerId}.hasAnswered`] = false;
       });
+
+      await updateDoc(gameRef, updates);
 
       if (isLastQuestion) {
         navigate(`/results/${gameCode}`);
       }
     } catch (error) {
-      console.error("Error submitting answer:", error);
-      setError("Error submitting answer");
+      console.error("Error moving to next question:", error);
+      setError("Error moving to next question");
     }
   };
 
@@ -115,6 +179,14 @@ const GamePage = () => {
     );
   }
 
+  const isHost =
+    Object.values(gameData.players).find((p) => p.isHost)?.id === user?.uid;
+  const answeredCount = Object.values(gameData.players).filter(
+    (p) => p.hasAnswered
+  ).length;
+  const totalPlayers = Object.keys(gameData.players).length;
+  const answeredPercentage = (answeredCount / totalPlayers) * 100;
+
   return (
     <div className="container mx-auto py-8">
       <Card>
@@ -132,19 +204,34 @@ const GamePage = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {currentQuestion.options?.map((option, index) => (
-              <Button
-                key={index}
-                onClick={() => handleAnswer(index)}
-                variant="outline"
-                className="p-8 text-lg h-auto whitespace-normal"
-                size="lg"
-              >
-                {option}
-              </Button>
-            ))}
-          </div>
+          {!hasAnswered ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {currentQuestion.options?.map((option, index) => (
+                <Button
+                  key={index}
+                  onClick={() => handleAnswer(index)}
+                  variant="outline"
+                  className="p-8 text-lg h-auto whitespace-normal"
+                  size="lg"
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center space-y-4">
+              <p className="text-lg font-medium">
+                Waiting for other players...
+              </p>
+              <div className="flex items-center gap-2 justify-center text-muted-foreground">
+                <Users className="h-4 w-4" />
+                <span>
+                  {answeredCount} of {totalPlayers} answered
+                </span>
+              </div>
+              <Progress value={answeredPercentage} className="w-full" />
+            </div>
+          )}
 
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Players: {Object.keys(gameData.players).length}</span>
@@ -153,18 +240,19 @@ const GamePage = () => {
             </span>
           </div>
         </CardContent>
-      </Card>
-      <pre className="mt-4 p-4 bg-muted rounded-lg text-xs">
-        Debug:{" "}
-        {JSON.stringify(
-          {
-            currentQuestion,
-            gameData: { ...gameData, questions: gameData.questions.length },
-          },
-          null,
-          2
+        {isHost && (
+          <CardFooter className="flex justify-end pt-6 border-t">
+            <Button
+              onClick={handleNextQuestion}
+              disabled={answeredCount < totalPlayers}
+            >
+              {gameData.currentQuestionIndex === gameData.questions.length - 1
+                ? "End Game"
+                : "Next Question"}
+            </Button>
+          </CardFooter>
         )}
-      </pre>
+      </Card>
     </div>
   );
 };

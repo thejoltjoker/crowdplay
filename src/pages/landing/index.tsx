@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/providers/auth";
@@ -12,12 +12,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Pencil } from "lucide-react";
 
 const LandingPage = () => {
-  const { user } = useAuth();
+  const { user, username, setUsername } = useAuth();
   const [gameCode, setGameCode] = useState("");
-  const [playerName, setPlayerName] = useState("");
   const [error, setError] = useState("");
+  const [isEditingName, setIsEditingName] = useState(!username);
   const navigate = useNavigate();
 
   const handleJoinGame = async () => {
@@ -26,7 +27,7 @@ const LandingPage = () => {
       return;
     }
 
-    if (!playerName.trim()) {
+    if (!username?.trim()) {
       setError("Please enter your name");
       return;
     }
@@ -37,7 +38,7 @@ const LandingPage = () => {
     }
 
     try {
-      await joinGame(gameCode.toUpperCase(), user.uid, playerName);
+      await joinGame(gameCode.toUpperCase(), user.uid, username);
       navigate(`/lobby/${gameCode.toUpperCase()}`);
     } catch (error) {
       console.error("Error joining game:", error);
@@ -46,7 +47,7 @@ const LandingPage = () => {
   };
 
   const handleHostGame = async () => {
-    if (!playerName.trim()) {
+    if (!username?.trim()) {
       setError("Please enter your name");
       return;
     }
@@ -57,11 +58,16 @@ const LandingPage = () => {
         return;
       }
 
-      const gameCode = await createGame(user.uid, playerName);
-      navigate(`/lobby/${gameCode}`);
+      // Use the entered game code if provided, otherwise generate a random one
+      const finalGameCode = await createGame(
+        user.uid,
+        username,
+        gameCode.trim() || undefined
+      );
+      navigate(`/lobby/${finalGameCode}`);
     } catch (error) {
       console.error("Error creating game:", error);
-      setError("Error creating game");
+      setError(error instanceof Error ? error.message : "Error creating game");
     }
   };
 
@@ -77,26 +83,47 @@ const LandingPage = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="playerName">Your Name</Label>
-            <Input
-              id="playerName"
-              placeholder="Enter your name"
-              value={playerName}
-              onChange={(e) => {
-                setError("");
-                setPlayerName(e.target.value);
-              }}
-              maxLength={20}
-            />
+            {isEditingName ? (
+              <div className="flex gap-2">
+                <Input
+                  id="playerName"
+                  placeholder="Enter your name"
+                  value={username || ""}
+                  onChange={(e) => {
+                    setError("");
+                    setUsername(e.target.value);
+                  }}
+                  onBlur={() => {
+                    if (username?.trim()) {
+                      setIsEditingName(false);
+                    }
+                  }}
+                  maxLength={20}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-2 bg-muted rounded-md">
+                <span className="font-medium">{username}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditingName(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="gameCode">Game Code</Label>
             <Input
               id="gameCode"
-              placeholder="Enter Game Code"
+              placeholder="Enter Game Code (optional for hosting)"
               value={gameCode}
               onChange={(e) => {
                 setError("");
-                setGameCode(e.target.value);
+                setGameCode(e.target.value.toUpperCase());
               }}
               className="uppercase"
               maxLength={6}
@@ -107,7 +134,7 @@ const LandingPage = () => {
             <Button
               onClick={handleJoinGame}
               className="w-full"
-              disabled={!playerName.trim()}
+              disabled={!username?.trim() || !gameCode.trim()}
             >
               Join Game
             </Button>
@@ -115,7 +142,7 @@ const LandingPage = () => {
               variant="secondary"
               onClick={handleHostGame}
               className="w-full"
-              disabled={!playerName.trim()}
+              disabled={!username?.trim()}
             >
               Host Game
             </Button>

@@ -2,17 +2,14 @@ import { z } from "zod";
 import { playerSchema } from "./player";
 import { questionSchema } from "./question";
 
-export const gameStatusSchema = z.enum(["waiting", "playing", "finished"]);
-
 export const gameSchema = z.object({
   id: z.string(),
   joinCode: z.string(),
-  status: gameStatusSchema,
-  players: z.record(z.string(), playerSchema),
-  questions: z.array(questionSchema),
+  status: z.enum(["waiting", "playing", "finished"]).default("waiting"),
+  players: z.record(playerSchema),
+  questions: z.array(questionSchema).default([]),
   currentQuestionIndex: z.number().default(0),
-  createdAt: z.string(),
+  allowLateJoin: z.boolean().default(false),
 });
 
-export type GameStatus = z.infer<typeof gameStatusSchema>;
 export type Game = z.infer<typeof gameSchema>;
