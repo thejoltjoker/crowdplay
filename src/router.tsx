@@ -1,9 +1,9 @@
 import App from "@/pages/app";
 import LandingPage from "@/pages/landing";
 import { createBrowserRouter } from "react-router-dom";
-import GameLobby from "@/pages/lobby";
-import GamePlay from "@/pages/game";
-import GameResults from "./pages/results";
+import LobbyPage from "@/pages/lobby";
+import GamePage from "@/pages/game";
+import ResultsPage from "./pages/results";
 
 export const router = createBrowserRouter([
   {
@@ -12,15 +12,15 @@ export const router = createBrowserRouter([
   },
   {
     path: "/lobby/:id",
-    element: <GameLobby />,
+    element: <LobbyPage />,
   },
   {
     path: "/game/:id",
-    element: <GamePlay />,
+    element: <GamePage />,
   },
   {
     path: "/results/:id",
-    element: <GameResults />,
+    element: <ResultsPage />,
   },
   // {
   //   path: "/",

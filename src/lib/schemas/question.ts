@@ -1,0 +1,11 @@
+import { z } from "zod";
+
+export const questionSchema = z.object({
+  id: z.string(),
+  text: z.string(),
+  options: z.array(z.string()),
+  correctOption: z.number(),
+  timeLimit: z.number().default(30),
+});
+
+export type Question = z.infer<typeof questionSchema>;

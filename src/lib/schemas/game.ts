@@ -1,19 +1,18 @@
 import { z } from "zod";
 import { playerSchema } from "./player";
+import { questionSchema } from "./question";
 
-export const statusSchema = z.enum([
-  "waiting",
-  "starting",
-  "active",
-  "finished",
-]);
+export const gameStatusSchema = z.enum(["waiting", "playing", "finished"]);
 
-export const gameStateSchema = z.object({
-  status: statusSchema,
-  currentQuestion: z.number(),
-  timeRemaining: z.number(),
-  players: z.array(playerSchema),
-  scores: z.record(z.string(), z.number()),
+export const gameSchema = z.object({
+  id: z.string(),
+  joinCode: z.string(),
+  status: gameStatusSchema,
+  players: z.record(z.string(), playerSchema),
+  questions: z.array(questionSchema),
+  currentQuestionIndex: z.number().default(0),
+  createdAt: z.string(),
 });
 
-export type GameState = z.infer<typeof gameStateSchema>;
+export type GameStatus = z.infer<typeof gameStatusSchema>;
+export type Game = z.infer<typeof gameSchema>;

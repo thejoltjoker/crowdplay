@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { useParams, useNavigate } from "react-router-dom";
 
-const GameResults = () => {
-  const { gameCode } = useParams();
+const ResultsPage = () => {
+  const { id: gameCode } = useParams();
   const navigate = useNavigate();
 
   const handlePlayAgain = () => {
@@ -25,4 +25,4 @@ const GameResults = () => {
   );
 };
 
-export default GameResults;
+export default ResultsPage;
