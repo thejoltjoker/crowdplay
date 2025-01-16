@@ -83,9 +83,9 @@
 @layer utilities {
   .bg-crt {
     background: repeating-linear-gradient(
-      hsl(169, 89%, 3%) 0px,
+      hsl(169, 89%, 4%) 0px,
       hsl(169, 89%, 5%) 3px,
-      hsl(169, 89%, 3%) 6px
+      hsl(169, 89%, 4%) 6px
     );
   }
 }
