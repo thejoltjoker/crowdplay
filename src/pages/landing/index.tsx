@@ -1,4 +1,4 @@
-import { LogOut, Pencil } from "lucide-react";
+import { LogOut, Pencil, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -13,8 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signInWithGoogle } from "@/lib/firebase";
-import { createGame, joinGame } from "@/lib/firebase/firestore";
+import { createGame, getActiveGames, joinGame } from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
+import type { Game } from "@/lib/schemas/game";
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -22,14 +23,33 @@ export function LandingPage() {
   const [gameCode, setGameCode] = useState("");
   const [tempUsername, setTempUsername] = useState(username || "");
   const [isEditing, setIsEditing] = useState(!username);
+  const [activeGames, setActiveGames] = useState<Game[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Show username input by default if no username is set
   useEffect(() => {
     if (username) {
       setTempUsername(username);
       setIsEditing(false);
     }
   }, [username]);
+
+  useEffect(() => {
+    const loadActiveGames = async () => {
+      try {
+        const games = await getActiveGames();
+        setActiveGames(games);
+      } catch (error) {
+        console.error("Error loading active games:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadActiveGames();
+    // Refresh active games every 10 seconds
+    const interval = setInterval(loadActiveGames, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleCreateGame = async () => {
     if (!user || !tempUsername) return;
@@ -41,11 +61,11 @@ export function LandingPage() {
     }
   };
 
-  const handleJoinGame = async () => {
-    if (!user || !tempUsername || !gameCode) return;
+  const handleJoinGame = async (code: string) => {
+    if (!user || !tempUsername) return;
     try {
-      await joinGame(gameCode, user.uid, tempUsername);
-      navigate(`/lobby/${gameCode}`);
+      await joinGame(code, user.uid, tempUsername);
+      navigate(`/lobby/${code}`);
     } catch (error) {
       console.error("Error joining game:", error);
     }
@@ -72,29 +92,31 @@ export function LandingPage() {
         <CardHeader>
           <CardTitle>Welcome to CrowdPlay</CardTitle>
           <CardDescription>
-            Join a multiplayer quiz game and compete with friends!
+            {username
+              ? `Welcome back, ${username}!`
+              : "Join a multiplayer quiz game and compete with friends!"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Username Section */}
-          <div className="space-y-2">
-            <Label>Choose your player name</Label>
-            <div className="relative">
-              <Input
-                value={tempUsername}
-                onChange={(e) => setTempUsername(e.target.value)}
-                placeholder="Enter a username"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && isEditing) {
-                    handleUsernameSubmit();
-                  }
-                }}
-                disabled={!isAnonymous || (!isEditing && username)}
-                className={isEditing ? "pr-20" : "pr-10"}
-              />
-              {isAnonymous && (
-                <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
-                  {isEditing && (
+          {/* Username Section - Only show if not set */}
+          {!username && (
+            <div className="space-y-2">
+              <Label>Choose your player name</Label>
+              <div className="relative">
+                <Input
+                  value={tempUsername}
+                  onChange={(e) => setTempUsername(e.target.value)}
+                  placeholder="Enter a username"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && isEditing) {
+                      handleUsernameSubmit();
+                    }
+                  }}
+                  disabled={!isAnonymous || (!isEditing && username)}
+                  className={isEditing ? "pr-20" : "pr-10"}
+                />
+                {isAnonymous && (
+                  <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
                     <Button
                       size="sm"
                       onClick={handleUsernameSubmit}
@@ -102,79 +124,90 @@ export function LandingPage() {
                     >
                       Save
                     </Button>
-                  )}
-                  {!isEditing && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setIsEditing(true)}
-                      className="h-8 w-8"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  )}
+                  </div>
+                )}
+              </div>
+              {!isAnonymous && (
+                <p className="text-xs text-muted-foreground">
+                  Using Google account name
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Active Games Section */}
+          {username && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Active Games</h3>
+                <Button variant="outline" size="sm" onClick={handleCreateGame}>
+                  Create New Game
+                </Button>
+              </div>
+
+              {isLoading ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  Loading games...
+                </div>
+              ) : activeGames.length > 0 ? (
+                <div className="space-y-2">
+                  {activeGames.map((game) => {
+                    const playerCount = Object.keys(game.players).length;
+                    const hostName = Object.values(game.players).find(
+                      (p) => p.isHost
+                    )?.name;
+                    const currentPlayer = user
+                      ? game.players[user.uid]
+                      : undefined;
+                    const isHost = Boolean(currentPlayer?.isHost);
+                    const hasJoined = currentPlayer !== undefined;
+
+                    return (
+                      <div
+                        key={game.id}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
+                        <div className="space-y-1">
+                          <div className="font-medium">Game #{game.id}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Users className="h-3 w-3" />
+                            {playerCount} players • Host: {hostName}
+                          </div>
+                        </div>
+                        {user && (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              hasJoined
+                                ? navigate(`/lobby/${game.id}`)
+                                : handleJoinGame(game.id)
+                            }
+                            disabled={false}
+                          >
+                            {isHost
+                              ? "Go to Lobby"
+                              : hasJoined
+                                ? "Go to Game"
+                                : "Join"}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  No active games found
                 </div>
               )}
             </div>
-            {!isAnonymous && (
-              <p className="text-xs text-muted-foreground">
-                Using Google account name
-              </p>
-            )}
-          </div>
-
-          {/* Game Controls - Join Game First */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Join a Game</Label>
-              <div className="flex space-x-2">
-                <Input
-                  value={gameCode}
-                  onChange={(e) => setGameCode(e.target.value.toUpperCase())}
-                  placeholder="Enter game code"
-                  className="flex-1"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && gameCode && username) {
-                      handleJoinGame();
-                    }
-                  }}
-                />
-                <Button
-                  onClick={handleJoinGame}
-                  disabled={!username || !gameCode}
-                  size="lg"
-                >
-                  Play!
-                </Button>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  or
-                </span>
-              </div>
-            </div>
-
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleCreateGame}
-              disabled={!username}
-            >
-              Create New Game
-            </Button>
-          </div>
+          )}
 
           {/* Authentication Section */}
           <div className="space-y-2">
             {isAnonymous ? (
               <Button
-                className="w-full"
+                className="w-full uppercase"
                 variant="outline"
                 onClick={handleGoogleSignIn}
               >
