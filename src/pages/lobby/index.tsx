@@ -6,10 +6,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { Question } from "@/lib/schemas";
 import type { Game } from "@/lib/schemas/game";
 
+import { Button } from "@/components/ui/button";
+import { GameControls } from "@/components/game-controls";
+import { GameResults } from "@/components/game-results";
+import { PlayerList } from "@/components/player-list";
 import AddQuestionDialog from "@/components/add-question-dialog";
 import QuestionsQueue from "@/components/questions-queue";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -17,9 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { Switch } from "@/components/ui/switch";
 import { db } from "@/lib/firebase";
 import {
   addQuestion,
@@ -28,6 +27,7 @@ import {
   joinGame,
 } from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
+import { isGameHost } from "@/lib/helpers/game-state";
 
 function LobbyPage() {
   const { id: gameCode } = useParams();
@@ -58,7 +58,6 @@ function LobbyPage() {
           try {
             if (data.status === "waiting" || data.allowLateJoin) {
               await joinGame(gameCode, user.uid, username);
-              // Don't set game data here, it will be updated by the next snapshot
               return;
             } else {
               setError(
@@ -82,17 +81,11 @@ function LobbyPage() {
 
         // Handle redirection based on game status and user role
         if (data.status === "playing") {
-          const isHost =
-            user?.uid === Object.values(data.players).find((p) => p.isHost)?.id;
+          const isHost = isGameHost(data, user?.uid);
           if (!isHost) {
             navigate(`/game/${gameCode}`);
           }
         }
-      },
-      (error) => {
-        console.error("Error fetching game:", error);
-        setError("Error fetching game data");
-        setLoading(false);
       }
     );
 
@@ -114,7 +107,6 @@ function LobbyPage() {
       }
     };
 
-    // Only load available questions if we're the host and don't have any yet
     if (
       gameData?.players[user?.uid ?? ""]?.isHost &&
       availableQuestions.length === 0
@@ -131,10 +123,23 @@ function LobbyPage() {
       await updateDoc(gameRef, {
         status: "playing",
       });
-      // Remove navigation from here since it will happen automatically through the useEffect
     } catch (error) {
       console.error("Error starting game:", error);
       setError("Error starting game");
+    }
+  };
+
+  const handleEndGame = async () => {
+    if (!gameCode || !user || !gameData) return;
+
+    try {
+      const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+      await updateDoc(gameRef, {
+        status: "finished",
+      });
+    } catch (error) {
+      console.error("Error ending game:", error);
+      setError("Error ending game");
     }
   };
 
@@ -142,7 +147,6 @@ function LobbyPage() {
     if (!gameCode || !user || !gameData) return;
 
     try {
-      // Convert form data to Question format
       const options = [];
       let i = 0;
       while (formData[`option${i}`] !== undefined) {
@@ -150,15 +154,13 @@ function LobbyPage() {
         i++;
       }
 
-      // First add the question to the questions collection
       const newQuestion = await addQuestion({
         text: formData.questionText,
         options,
         correctOption: Number.parseInt(formData.correctAnswer),
-        timeLimit: 30, // Default time limit
+        timeLimit: 30,
       });
 
-      // Then add it to the game's questions
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
       await updateDoc(gameRef, {
         questions: [...gameData.questions, newQuestion],
@@ -183,34 +185,21 @@ function LobbyPage() {
     }
   };
 
-  const handleQuestionMove = async (
-    questionId: string,
-    direction: "up" | "down"
-  ) => {
+  const handleQuestionReorder = async (oldIndex: number, newIndex: number) => {
     if (!gameCode || !user || !gameData) return;
 
-    const currentIndex = gameData.questions.findIndex(
-      (q) => q.id === questionId
-    );
-    if (currentIndex === -1) return;
-
-    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex < 0 || newIndex >= gameData.questions.length) return;
-
-    const newQuestions = [...gameData.questions];
-    [newQuestions[currentIndex], newQuestions[newIndex]] = [
-      newQuestions[newIndex],
-      newQuestions[currentIndex],
-    ];
-
     try {
+      const newQuestions = [...gameData.questions];
+      const [movedQuestion] = newQuestions.splice(oldIndex, 1);
+      newQuestions.splice(newIndex, 0, movedQuestion);
+
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
       await updateDoc(gameRef, {
         questions: newQuestions,
       });
     } catch (error) {
-      console.error("Error moving question:", error);
-      setError("Error moving question");
+      console.error("Error reordering questions:", error);
+      setError("Error reordering questions");
     }
   };
 
@@ -222,13 +211,11 @@ function LobbyPage() {
       const nextQuestionIndex = gameData.currentQuestionIndex + 1;
       const isLastQuestion = nextQuestionIndex >= gameData.questions.length;
 
-      // Update scores and reset player states
       const updates: Record<string, any> = {
         currentQuestionIndex: nextQuestionIndex,
         status: isLastQuestion ? "finished" : "playing",
       };
 
-      // Update scores for all players who answered
       Object.entries(gameData.players).forEach(([playerId, player]) => {
         if (player.hasAnswered && !player.isHost) {
           updates[`players.${playerId}.score`] =
@@ -249,36 +236,33 @@ function LobbyPage() {
     }
   };
 
-  const handleEndGame = async () => {
-    if (!gameCode || !user || !gameData) return;
-
+  const handleToggleLateJoin = async (checked: boolean) => {
+    if (!gameCode) return;
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
       await updateDoc(gameRef, {
-        status: "finished",
+        allowLateJoin: checked,
       });
-      // Remove navigation for host
     } catch (error) {
-      console.error("Error ending game:", error);
-      setError("Error ending game");
+      console.error("Error updating late join setting:", error);
+      setError("Error updating late join setting");
     }
   };
 
-  const handleQuestionReorder = async (oldIndex: number, newIndex: number) => {
+  const handleNewGame = async () => {
     if (!gameCode || !user || !gameData) return;
 
     try {
-      const newQuestions = [...gameData.questions];
-      const [movedQuestion] = newQuestions.splice(oldIndex, 1);
-      newQuestions.splice(newIndex, 0, movedQuestion);
-
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
       await updateDoc(gameRef, {
-        questions: newQuestions,
+        status: "waiting",
+        currentQuestionIndex: 0,
+        questions: [],
+        allowLateJoin: false,
       });
     } catch (error) {
-      console.error("Error reordering questions:", error);
-      setError("Error reordering questions");
+      console.error("Error starting new game:", error);
+      setError("Error starting new game");
     }
   };
 
@@ -298,7 +282,7 @@ function LobbyPage() {
     );
   }
 
-  if (!gameData) {
+  if (!gameData || !gameCode) {
     return (
       <div className="flex items-center justify-center h-screen">
         <p className="text-destructive">Game not found</p>
@@ -306,176 +290,35 @@ function LobbyPage() {
     );
   }
 
-  const isHost =
-    user?.uid === Object.values(gameData.players).find((p) => p.isHost)?.id;
-  const players = Object.values(gameData.players).map((player) => player);
-  const activePlayers = players.filter((p) => !p.isHost);
-  const answeredCount = activePlayers.filter((p) => p.hasAnswered).length;
-  const totalPlayers = activePlayers.length;
-  const answeredPercentage =
-    totalPlayers > 0 ? (answeredCount / totalPlayers) * 100 : 0;
+  const isHost = isGameHost(gameData, user?.uid);
   const currentQuestion = gameData.questions[gameData.currentQuestionIndex];
 
   return (
     <div className="container mx-auto p-4">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Game Lobby</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Hosted by{" "}
-                {Object.values(gameData.players).find((p) => p.isHost)?.name}
-              </p>
-            </div>
-            {isHost && gameData?.status === "playing" && (
-              <Button variant="destructive" onClick={handleEndGame}>
-                End Game
-              </Button>
-            )}
-          </div>
+          <CardTitle>Game Lobby</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-lg">
-              Game Code: <span className="font-mono font-bold">{gameCode}</span>
-            </p>
-            {gameData.status === "waiting" ? (
-              isHost && (
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="allow-late-join"
-                      checked={gameData.allowLateJoin}
-                      onCheckedChange={async (checked) => {
-                        if (!gameCode) return;
-                        try {
-                          const gameRef = doc(
-                            db,
-                            "games",
-                            gameCode
-                          ).withConverter(gameConverter);
-                          await updateDoc(gameRef, {
-                            allowLateJoin: checked,
-                          });
-                        } catch (error) {
-                          console.error(
-                            "Error updating late join setting:",
-                            error
-                          );
-                          setError("Error updating late join setting");
-                        }
-                      }}
-                    />
-                    <Label htmlFor="allow-late-join">Allow Late Join</Label>
-                  </div>
-                  <Button
-                    onClick={handleStartGame}
-                    disabled={gameData.questions.length === 0}
-                  >
-                    Start Game
-                  </Button>
-                </div>
-              )
-            ) : (
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={
-                    gameData.status === "playing" ? "default" : "secondary"
-                  }
-                >
-                  {gameData.status === "playing"
-                    ? "Game in progress"
-                    : "Game finished"}
-                </Badge>
-                {!gameData.players[user?.uid ?? ""] &&
-                  gameData.allowLateJoin && (
-                    <Button onClick={() => navigate(`/game/${gameCode}`)}>
-                      Join Game
-                    </Button>
-                  )}
-              </div>
-            )}
-          </div>
+          <GameControls
+            game={gameData}
+            gameCode={gameCode}
+            userId={user?.uid}
+            onStartGame={handleStartGame}
+            onEndGame={handleEndGame}
+            onJoinGame={() => navigate(`/game/${gameCode}`)}
+            onToggleLateJoin={handleToggleLateJoin}
+            onNewGame={handleNewGame}
+            onGoHome={() => navigate("/")}
+          />
         </CardContent>
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Players</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {players.map((player) => (
-                <li
-                  key={player.id}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{player.name}</span>
-                    {player.isHost && <Badge variant="secondary">Host</Badge>}
-                  </div>
-                  {gameData.status === "playing" && !player.isHost && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">
-                        Score: {player.score}
-                      </span>
-                      {player.hasAnswered && (
-                        <Badge variant="outline">Answered</Badge>
-                      )}
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-          {gameData.status === "playing" && (
-            <CardFooter className="border-t pt-6">
-              <div className="w-full space-y-2">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Answers</span>
-                  <span>
-                    {answeredCount} of
-                    {totalPlayers}
-                  </span>
-                </div>
-                <Progress value={answeredPercentage} className="w-full" />
-              </div>
-            </CardFooter>
-          )}
-        </Card>
+      <div className="grid md:grid-cols-2 gap-8 mt-8">
+        <PlayerList game={gameData} />
 
         {isHost && gameData.status === "finished" ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Game Results</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <h3 className="font-semibold">Final Scores</h3>
-                <ul className="space-y-2">
-                  {Object.values(gameData.players)
-                    .filter((player) => !player.isHost)
-                    .sort((a, b) => (b.score || 0) - (a.score || 0))
-                    .map((player, index) => (
-                      <li
-                        key={player.id}
-                        className="flex items-center justify-between p-2 rounded bg-muted"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{index + 1}.</span>
-                          <span>{player.name}</span>
-                        </div>
-                        <Badge variant="secondary">
-                          Score: {player.score || 0}
-                        </Badge>
-                      </li>
-                    ))}
-                </ul>
-              </div>
-            </CardContent>
-          </Card>
+          <GameResults game={gameData} />
         ) : (
           isHost && (
             <Card>
@@ -500,7 +343,7 @@ function LobbyPage() {
                 <QuestionsQueue
                   questions={gameData.questions}
                   onRemoveQuestion={handleQuestionRemove}
-                  onMoveQuestion={handleQuestionMove}
+                  onMoveQuestion={() => {}}
                   onReorder={handleQuestionReorder}
                   currentQuestionIndex={
                     gameData.status === "playing"

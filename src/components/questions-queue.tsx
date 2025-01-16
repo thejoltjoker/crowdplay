@@ -42,7 +42,10 @@ function SortableQuestionItem({
   isDisabled: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: question.id, disabled: isDisabled });
+    useSortable({
+      id: question.id,
+      disabled: isDisabled || index <= currentQuestionIndex,
+    });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -57,7 +60,9 @@ function SortableQuestionItem({
         "flex items-center justify-between p-3 rounded border relative",
         index === currentQuestionIndex
           ? "border-primary bg-primary/5"
-          : "border-border"
+          : index < currentQuestionIndex
+            ? "border-muted bg-muted/50"
+            : "border-border"
       )}
     >
       <div className="flex items-center gap-2 flex-1">
@@ -66,9 +71,10 @@ function SortableQuestionItem({
           size="icon"
           className={cn(
             "cursor-grab active:cursor-grabbing",
-            isDisabled && "cursor-not-allowed"
+            (isDisabled || index <= currentQuestionIndex) &&
+              "cursor-not-allowed opacity-50"
           )}
-          disabled={isDisabled}
+          disabled={isDisabled || index <= currentQuestionIndex}
           {...attributes}
           {...listeners}
         >
