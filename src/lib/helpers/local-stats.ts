@@ -13,7 +13,8 @@ export function getLocalStats(): UserStats | null {
     const stats = JSON.parse(statsJson) as UserStats;
     console.log("Retrieved local stats:", stats);
     return stats;
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error parsing local stats:", error);
     localStorage.removeItem(LOCAL_STATS_KEY); // Clear invalid data
     return null;
@@ -23,8 +24,8 @@ export function getLocalStats(): UserStats | null {
 export function saveLocalStats(stats: UserStats): void {
   // Validate stats before saving
   if (
-    typeof stats.totalScore !== "number" ||
-    typeof stats.gamesPlayed !== "number"
+    typeof stats.totalScore !== "number"
+    || typeof stats.gamesPlayed !== "number"
   ) {
     console.error("Invalid stats object:", stats);
     return;
@@ -42,7 +43,7 @@ export function updateLocalStats(
   userId: string,
   displayName: string,
   gameScore: number,
-  isGameFinished: boolean = false
+  isGameFinished: boolean = false,
 ): void {
   console.log("Updating local stats for user:", {
     userId,
@@ -69,8 +70,8 @@ export function updateLocalStats(
   const newGamesPlayed = isGameFinished
     ? currentGamesPlayed + 1
     : currentGamesPlayed;
-  const newAverageScore =
-    newGamesPlayed > 0 ? newTotalScore / newGamesPlayed : 0;
+  const newAverageScore
+    = newGamesPlayed > 0 ? newTotalScore / newGamesPlayed : 0;
 
   console.log("Stats calculation:", {
     currentTotalScore,

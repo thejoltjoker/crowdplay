@@ -192,8 +192,9 @@ function GamePage() {
       !currentQuestion ||
       hasAnswered ||
       !gameData.currentQuestionStartedAt
-    )
+    ) {
       return;
+    }
 
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
@@ -405,7 +406,8 @@ function GamePage() {
               <div className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
                 <span>
-                  {answeredCount} of {totalPlayers} answered
+                  {answeredCount} of
+                  {totalPlayers} answered
                 </span>
               </div>
               <span>{Math.round(answeredPercentage)}%</span>

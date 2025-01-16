@@ -235,7 +235,7 @@ function LobbyPage() {
 
       await updateDoc(gameRef, updates);
 
-      if (isLastQuestion) {
+      if (isLastQuestion && !gameData.players[user.uid]?.isHost) {
         navigate(`/results/${gameCode}`);
       }
     } catch (error) {

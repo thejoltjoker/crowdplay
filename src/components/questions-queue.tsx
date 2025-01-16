@@ -43,8 +43,8 @@ function SortableQuestionItem({
   isDisabled: boolean;
   isHost: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition }
+    = useSortable({
       id: question.id,
       disabled: !isHost || index <= currentQuestionIndex,
     });
@@ -64,7 +64,7 @@ function SortableQuestionItem({
           ? "border-primary bg-primary/5"
           : index < currentQuestionIndex
             ? "border-muted bg-muted/50"
-            : "border-border"
+            : "border-border",
       )}
     >
       <div className="flex items-center gap-2 flex-1">
@@ -73,8 +73,8 @@ function SortableQuestionItem({
           size="icon"
           className={cn(
             "cursor-grab active:cursor-grabbing",
-            (!isHost || index <= currentQuestionIndex) &&
-              "cursor-not-allowed opacity-50"
+            (!isHost || index <= currentQuestionIndex)
+            && "cursor-not-allowed opacity-50",
           )}
           disabled={!isHost || index <= currentQuestionIndex}
           {...attributes}
@@ -85,8 +85,17 @@ function SortableQuestionItem({
         <div>
           <p className="font-medium">{question.text}</p>
           <p className="text-sm text-muted-foreground">
-            {question.options.length} options
-            {question.timeLimit && <> · {question.timeLimit}s</>}
+            {question.options.length}
+            {" "}
+            options
+            {question.timeLimit && (
+              <>
+                {" "}
+                ·
+                {question.timeLimit}
+                s
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -114,15 +123,15 @@ export function QuestionsQueue({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = questions.findIndex((q) => q.id === active.id);
-      const newIndex = questions.findIndex((q) => q.id === over.id);
+      const oldIndex = questions.findIndex(q => q.id === active.id);
+      const newIndex = questions.findIndex(q => q.id === over.id);
 
       // Only allow reordering of future questions
       if (oldIndex > currentQuestionIndex && newIndex > currentQuestionIndex) {
@@ -146,7 +155,7 @@ export function QuestionsQueue({
       onDragEnd={handleDragEnd}
     >
       <SortableContext
-        items={questions.map((q) => q.id)}
+        items={questions.map(q => q.id)}
         strategy={verticalListSortingStrategy}
       >
         <ul className="space-y-2">

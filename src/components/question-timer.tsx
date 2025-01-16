@@ -13,7 +13,8 @@ export function QuestionTimer({
   startedAt,
   onTimeUp,
 }: QuestionTimerProps) {
-  if (!timeLimit) return null;
+  if (!timeLimit)
+    return null;
 
   const [timeLeft, setTimeLeft] = useState(timeLimit);
 
@@ -44,7 +45,10 @@ export function QuestionTimer({
     <div className="space-y-2">
       <div className="flex justify-between text-sm text-muted-foreground">
         <span>Time Remaining</span>
-        <span>{Math.ceil(timeLeft)}s</span>
+        <span>
+          {Math.ceil(timeLeft)}
+          s
+        </span>
       </div>
       <Progress
         value={progress}

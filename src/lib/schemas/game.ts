@@ -18,7 +18,7 @@ export const gameSchema = z.object({
       lastAnswerCorrect: z.boolean().default(false),
       lastQuestionScore: z.number().default(0),
       responseTime: z.number().default(0),
-    })
+    }),
   ),
   allowLateJoin: z.boolean().default(false),
 });

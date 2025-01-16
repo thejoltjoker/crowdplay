@@ -100,7 +100,10 @@ function ResultsPage() {
                 {gameId}
               </span>
             </p>
-            <p>Total Questions: {gameData.questions.length}</p>
+            <p>
+              Total Questions:
+              {gameData.questions.length}
+            </p>
           </div>
 
           <div className="space-y-4">
