@@ -31,11 +31,21 @@ function GamePage() {
   const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
-    if (!gameCode || !user || !username) {
+    if (!gameCode) {
       setLoading(false);
-      setError("Missing required information");
+      setError("Game code is missing");
       return;
     }
+
+    if (!user) {
+      setLoading(false);
+      setError("Not signed in");
+      return;
+    }
+
+    // For anonymous users, use "Anonymous" as username if none is set
+    const effectiveUsername =
+      username || (isAnonymous ? "Anonymous" : user.displayName || "Unknown");
 
     const unsubscribe = onSnapshot(
       doc(db, "games", gameCode).withConverter(gameConverter),
@@ -58,7 +68,7 @@ function GamePage() {
 
           try {
             setIsJoining(true);
-            await joinGame(gameCode, user.uid, username);
+            await joinGame(gameCode, user.uid, effectiveUsername);
             // Don't set game data here, it will be updated by the next snapshot
             return;
           } catch (error) {
@@ -108,6 +118,7 @@ function GamePage() {
     user,
     username,
     isJoining,
+    isAnonymous,
   ]);
 
   const handleAnswer = async (optionIndex: number) => {

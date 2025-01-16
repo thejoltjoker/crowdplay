@@ -1,11 +1,48 @@
 import {
   signInAnonymously,
+  signInWithPopup,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 
-import { auth } from "@/lib/firebase";
+import { auth, googleProvider } from "@/lib/firebase";
+import { getLocalStats, clearLocalStats } from "@/lib/helpers/local-stats";
+import { updateUserStats } from "@/lib/firebase/firestore";
+
+const USERNAME_KEY = "crowdplay_username";
+
+// Add function to handle Google sign in and stats transfer
+export const signInWithGoogleAndTransferStats = async () => {
+  try {
+    // Get local stats before signing in
+    const localStats = getLocalStats();
+    console.log("Local stats before Google sign in:", localStats);
+
+    // Sign in with Google
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+
+    // If we had local stats, transfer them to the Google account
+    if (localStats && localStats.totalScore > 0) {
+      console.log("Transferring local stats to Google account");
+      await updateUserStats(
+        user.uid,
+        user.displayName || "Unknown",
+        localStats.totalScore,
+        false, // Not anonymous anymore
+        true // Treat as a finished game to update games played
+      );
+      // Clear local stats after successful transfer
+      clearLocalStats();
+    }
+
+    return user;
+  } catch (error) {
+    console.error("Error signing in with Google:", error);
+    throw error;
+  }
+};
 
 export interface AuthContextType {
   user: User | null;
@@ -28,8 +65,6 @@ export const AuthContext = createContext<AuthContextType>({
 export interface AuthProviderProps {
   children: React.ReactNode;
 }
-
-const USERNAME_KEY = "crowdplay_username";
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);

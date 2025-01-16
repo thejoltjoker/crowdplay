@@ -11,12 +11,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { signInWithGoogle } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { userStatsConverter } from "@/lib/firebase/firestore";
 import type { UserStats } from "@/lib/schemas/user-stats";
 import { useAuth } from "@/providers/auth";
+import { signInWithGoogleAndTransferStats } from "@/providers/auth";
 import {
   getLocalStats,
   clearLocalStats,
@@ -119,7 +119,7 @@ export function ProfilePage() {
 
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithGoogle();
+      await signInWithGoogleAndTransferStats();
     } catch (error) {
       console.error("Error signing in with Google:", error);
     }
