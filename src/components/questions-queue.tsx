@@ -1,22 +1,137 @@
-import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { GripVertical, Trash2 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import type { Question } from "@/lib/schemas";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface QuestionsQueueProps {
   questions: Question[];
   onRemoveQuestion: (id: string) => void;
   onMoveQuestion: (id: string, direction: "up" | "down") => void;
+  onReorder: (oldIndex: number, newIndex: number) => void;
   currentQuestionIndex?: number;
+}
+
+interface SortableQuestionItemProps {
+  question: Question;
+  index: number;
+  currentQuestionIndex: number;
+  onRemoveQuestion: (id: string) => void;
+  isDisabled: boolean;
+}
+
+function SortableQuestionItem({
+  question,
+  index,
+  currentQuestionIndex,
+  onRemoveQuestion,
+  isDisabled,
+}: SortableQuestionItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: question.id, disabled: isDisabled });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center justify-between p-3 rounded border",
+        index === currentQuestionIndex
+          ? "border-primary bg-primary/5"
+          : "border-border",
+        isDragging && "opacity-50",
+        isDisabled && "opacity-50 cursor-not-allowed"
+      )}
+    >
+      <div className="flex items-center gap-2 flex-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "cursor-grab active:cursor-grabbing",
+            isDisabled && "cursor-not-allowed"
+          )}
+          {...attributes}
+          {...listeners}
+          disabled={isDisabled}
+        >
+          <GripVertical className="h-4 w-4" />
+        </Button>
+        <div>
+          <p className="font-medium">{question.text}</p>
+          <p className="text-sm text-muted-foreground">
+            {question.options.length} options · {question.timeLimit}s
+          </p>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onRemoveQuestion(question.id)}
+        disabled={currentQuestionIndex >= 0}
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </li>
+  );
 }
 
 export function QuestionsQueue({
   questions,
   onRemoveQuestion,
   onMoveQuestion,
+  onReorder,
   currentQuestionIndex = -1,
 }: QuestionsQueueProps) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = questions.findIndex((q) => q.id === active.id);
+      const newIndex = questions.findIndex((q) => q.id === over.id);
+      onReorder(oldIndex, newIndex);
+    }
+  };
+
   if (questions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground text-center py-4">
@@ -26,55 +141,29 @@ export function QuestionsQueue({
   }
 
   return (
-    <ul className="space-y-2">
-      {questions.map((question, index) => (
-        <li
-          key={question.id}
-          className={`flex items-center justify-between p-3 rounded border ${
-            index === currentQuestionIndex
-              ? "border-primary bg-primary/5"
-              : "border-border"
-          }`}
-        >
-          <div className="flex-1 mr-4">
-            <p className="font-medium">{question.text}</p>
-            <p className="text-sm text-muted-foreground">
-              {question.options.length}
-              {" "}
-              options ·
-              {question.timeLimit}
-              s
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onMoveQuestion(question.id, "up")}
-              disabled={index === 0}
-            >
-              <ArrowUp className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onMoveQuestion(question.id, "down")}
-              disabled={index === questions.length - 1}
-            >
-              <ArrowDown className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onRemoveQuestion(question.id)}
-              disabled={currentQuestionIndex >= 0}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={questions.map((q) => q.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <ul className="space-y-2">
+          {questions.map((question, index) => (
+            <SortableQuestionItem
+              key={question.id}
+              question={question}
+              index={index}
+              currentQuestionIndex={currentQuestionIndex}
+              onRemoveQuestion={onRemoveQuestion}
+              isDisabled={currentQuestionIndex >= 0}
+            />
+          ))}
+        </ul>
+      </SortableContext>
+    </DndContext>
   );
 }
 

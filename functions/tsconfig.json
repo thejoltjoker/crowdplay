@@ -6,7 +6,8 @@
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "outDir": "lib",
-    "sourceMap": true
+    "sourceMap": true,
+    "esModuleInterop": true
   },
   "compileOnSave": true,
   "include": ["src"]

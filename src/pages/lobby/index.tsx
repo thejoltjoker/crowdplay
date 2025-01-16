@@ -40,8 +40,7 @@ function LobbyPage() {
   const [loadingQuestions, setLoadingQuestions] = useState(false);
 
   useEffect(() => {
-    if (!gameCode)
-      return;
+    if (!gameCode) return;
 
     const unsubscribe = onSnapshot(
       doc(db, "games", gameCode).withConverter(gameConverter),
@@ -61,19 +60,17 @@ function LobbyPage() {
               await joinGame(gameCode, user.uid, username);
               // Don't set game data here, it will be updated by the next snapshot
               return;
-            }
-            else {
+            } else {
               setError(
-                "Game has already started and late joining is not allowed",
+                "Game has already started and late joining is not allowed"
               );
               setLoading(false);
               return;
             }
-          }
-          catch (error) {
+          } catch (error) {
             console.error("Error joining game:", error);
             setError(
-              error instanceof Error ? error.message : "Error joining game",
+              error instanceof Error ? error.message : "Error joining game"
             );
             setLoading(false);
             return;
@@ -85,8 +82,8 @@ function LobbyPage() {
 
         // Handle redirection based on game status and user role
         if (data.status === "playing") {
-          const isHost
-            = user?.uid === Object.values(data.players).find(p => p.isHost)?.id;
+          const isHost =
+            user?.uid === Object.values(data.players).find((p) => p.isHost)?.id;
           if (!isHost) {
             navigate(`/game/${gameCode}`);
           }
@@ -96,7 +93,7 @@ function LobbyPage() {
         console.error("Error fetching game:", error);
         setError("Error fetching game data");
         setLoading(false);
-      },
+      }
     );
 
     return () => unsubscribe();
@@ -109,28 +106,25 @@ function LobbyPage() {
         setLoadingQuestions(true);
         const questions = await fetchQuestions();
         setAvailableQuestions(questions);
-      }
-      catch (error) {
+      } catch (error) {
         console.error("Error loading questions:", error);
         setError("Error loading questions");
-      }
-      finally {
+      } finally {
         setLoadingQuestions(false);
       }
     };
 
     // Only load available questions if we're the host and don't have any yet
     if (
-      gameData?.players[user?.uid ?? ""]?.isHost
-      && availableQuestions.length === 0
+      gameData?.players[user?.uid ?? ""]?.isHost &&
+      availableQuestions.length === 0
     ) {
       loadQuestions();
     }
   }, [gameData, user?.uid, availableQuestions.length]);
 
   const handleStartGame = async () => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
@@ -138,16 +132,14 @@ function LobbyPage() {
         status: "playing",
       });
       // Remove navigation from here since it will happen automatically through the useEffect
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error starting game:", error);
       setError("Error starting game");
     }
   };
 
   const handleQuestionAdd = async (formData: any) => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       // Convert form data to Question format
@@ -171,24 +163,21 @@ function LobbyPage() {
       await updateDoc(gameRef, {
         questions: [...gameData.questions, newQuestion],
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error adding question:", error);
       setError("Error adding question");
     }
   };
 
   const handleQuestionRemove = async (questionId: string) => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
       await updateDoc(gameRef, {
-        questions: gameData.questions.filter(q => q.id !== questionId),
+        questions: gameData.questions.filter((q) => q.id !== questionId),
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error removing question:", error);
       setError("Error removing question");
     }
@@ -196,20 +185,17 @@ function LobbyPage() {
 
   const handleQuestionMove = async (
     questionId: string,
-    direction: "up" | "down",
+    direction: "up" | "down"
   ) => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     const currentIndex = gameData.questions.findIndex(
-      q => q.id === questionId,
+      (q) => q.id === questionId
     );
-    if (currentIndex === -1)
-      return;
+    if (currentIndex === -1) return;
 
     const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (newIndex < 0 || newIndex >= gameData.questions.length)
-      return;
+    if (newIndex < 0 || newIndex >= gameData.questions.length) return;
 
     const newQuestions = [...gameData.questions];
     [newQuestions[currentIndex], newQuestions[newIndex]] = [
@@ -222,16 +208,14 @@ function LobbyPage() {
       await updateDoc(gameRef, {
         questions: newQuestions,
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error moving question:", error);
       setError("Error moving question");
     }
   };
 
   const handleNextQuestion = async () => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
@@ -247,8 +231,8 @@ function LobbyPage() {
       // Update scores for all players who answered
       Object.entries(gameData.players).forEach(([playerId, player]) => {
         if (player.hasAnswered && !player.isHost) {
-          updates[`players.${playerId}.score`]
-            = (player.score || 0) + (player.lastAnswerCorrect ? 1 : 0);
+          updates[`players.${playerId}.score`] =
+            (player.score || 0) + (player.lastAnswerCorrect ? 1 : 0);
         }
         updates[`players.${playerId}.hasAnswered`] = false;
         updates[`players.${playerId}.lastAnswerCorrect`] = false;
@@ -259,16 +243,48 @@ function LobbyPage() {
       if (isLastQuestion) {
         navigate(`/results/${gameCode}`);
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error moving to next question:", error);
       setError("Error moving to next question");
     }
   };
 
+  const handleEndGame = async () => {
+    if (!gameCode || !user || !gameData) return;
+
+    try {
+      const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+      await updateDoc(gameRef, {
+        status: "finished",
+      });
+      // Remove navigation for host
+    } catch (error) {
+      console.error("Error ending game:", error);
+      setError("Error ending game");
+    }
+  };
+
+  const handleQuestionReorder = async (oldIndex: number, newIndex: number) => {
+    if (!gameCode || !user || !gameData) return;
+
+    try {
+      const newQuestions = [...gameData.questions];
+      const [movedQuestion] = newQuestions.splice(oldIndex, 1);
+      newQuestions.splice(newIndex, 0, movedQuestion);
+
+      const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+      await updateDoc(gameRef, {
+        questions: newQuestions,
+      });
+    } catch (error) {
+      console.error("Error reordering questions:", error);
+      setError("Error reordering questions");
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
@@ -276,7 +292,7 @@ function LobbyPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-screen items-center justify-center">
         <p className="text-destructive">{error}</p>
       </div>
     );
@@ -290,94 +306,96 @@ function LobbyPage() {
     );
   }
 
-  const isHost
-    = user?.uid === Object.values(gameData.players).find(p => p.isHost)?.id;
-  const players = Object.values(gameData.players).map(player => player);
-  const activePlayers = players.filter(p => !p.isHost);
-  const answeredCount = activePlayers.filter(p => p.hasAnswered).length;
+  const isHost =
+    user?.uid === Object.values(gameData.players).find((p) => p.isHost)?.id;
+  const players = Object.values(gameData.players).map((player) => player);
+  const activePlayers = players.filter((p) => !p.isHost);
+  const answeredCount = activePlayers.filter((p) => p.hasAnswered).length;
   const totalPlayers = activePlayers.length;
-  const answeredPercentage
-    = totalPlayers > 0 ? (answeredCount / totalPlayers) * 100 : 0;
+  const answeredPercentage =
+    totalPlayers > 0 ? (answeredCount / totalPlayers) * 100 : 0;
   const currentQuestion = gameData.questions[gameData.currentQuestionIndex];
 
   return (
-    <div className="container mx-auto py-8 space-y-8 w-full">
+    <div className="container mx-auto p-4">
       <Card>
         <CardHeader>
-          <CardTitle>Game Lobby</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Hosted by
-            {" "}
-            {Object.values(gameData.players).find(p => p.isHost)?.name}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Game Lobby</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Hosted by{" "}
+                {Object.values(gameData.players).find((p) => p.isHost)?.name}
+              </p>
+            </div>
+            {isHost && gameData?.status === "playing" && (
+              <Button variant="destructive" onClick={handleEndGame}>
+                End Game
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-lg">
-              Game Code:
-              {" "}
-              <span className="font-mono font-bold">{gameCode}</span>
+              Game Code: <span className="font-mono font-bold">{gameCode}</span>
             </p>
-            {gameData.status === "waiting"
-              ? (
-                  isHost && (
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id="allow-late-join"
-                          checked={gameData.allowLateJoin}
-                          onCheckedChange={async (checked) => {
-                            if (!gameCode)
-                              return;
-                            try {
-                              const gameRef = doc(
-                                db,
-                                "games",
-                                gameCode,
-                              ).withConverter(gameConverter);
-                              await updateDoc(gameRef, {
-                                allowLateJoin: checked,
-                              });
-                            }
-                            catch (error) {
-                              console.error(
-                                "Error updating late join setting:",
-                                error,
-                              );
-                              setError("Error updating late join setting");
-                            }
-                          }}
-                        />
-                        <Label htmlFor="allow-late-join">Allow Late Join</Label>
-                      </div>
-                      <Button
-                        onClick={handleStartGame}
-                        disabled={gameData.questions.length === 0}
-                      >
-                        Start Game
-                      </Button>
-                    </div>
-                  )
-                )
-              : (
+            {gameData.status === "waiting" ? (
+              isHost && (
+                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        gameData.status === "playing" ? "default" : "secondary"
-                      }
-                    >
-                      {gameData.status === "playing"
-                        ? "Game in progress"
-                        : "Game finished"}
-                    </Badge>
-                    {!gameData.players[user?.uid ?? ""]
-                    && gameData.allowLateJoin && (
-                      <Button onClick={() => navigate(`/game/${gameCode}`)}>
-                        Join Game
-                      </Button>
-                    )}
+                    <Switch
+                      id="allow-late-join"
+                      checked={gameData.allowLateJoin}
+                      onCheckedChange={async (checked) => {
+                        if (!gameCode) return;
+                        try {
+                          const gameRef = doc(
+                            db,
+                            "games",
+                            gameCode
+                          ).withConverter(gameConverter);
+                          await updateDoc(gameRef, {
+                            allowLateJoin: checked,
+                          });
+                        } catch (error) {
+                          console.error(
+                            "Error updating late join setting:",
+                            error
+                          );
+                          setError("Error updating late join setting");
+                        }
+                      }}
+                    />
+                    <Label htmlFor="allow-late-join">Allow Late Join</Label>
                   </div>
-                )}
+                  <Button
+                    onClick={handleStartGame}
+                    disabled={gameData.questions.length === 0}
+                  >
+                    Start Game
+                  </Button>
+                </div>
+              )
+            ) : (
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={
+                    gameData.status === "playing" ? "default" : "secondary"
+                  }
+                >
+                  {gameData.status === "playing"
+                    ? "Game in progress"
+                    : "Game finished"}
+                </Badge>
+                {!gameData.players[user?.uid ?? ""] &&
+                  gameData.allowLateJoin && (
+                    <Button onClick={() => navigate(`/game/${gameCode}`)}>
+                      Join Game
+                    </Button>
+                  )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -389,7 +407,7 @@ function LobbyPage() {
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {players.map(player => (
+              {players.map((player) => (
                 <li
                   key={player.id}
                   className="flex items-center justify-between"
@@ -401,9 +419,7 @@ function LobbyPage() {
                   {gameData.status === "playing" && !player.isHost && (
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">
-                        Score:
-                        {" "}
-                        {player.score}
+                        Score: {player.score}
                       </span>
                       {player.hasAnswered && (
                         <Badge variant="outline">Answered</Badge>
@@ -420,9 +436,7 @@ function LobbyPage() {
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Answers</span>
                   <span>
-                    {answeredCount}
-                    {" "}
-                    of
+                    {answeredCount} of
                     {totalPlayers}
                   </span>
                 </div>
@@ -432,60 +446,93 @@ function LobbyPage() {
           )}
         </Card>
 
-        {isHost && (
+        {isHost && gameData.status === "finished" ? (
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle>Questions</CardTitle>
-              {gameData.status === "playing" && (
-                <Button onClick={handleNextQuestion}>
-                  {gameData.currentQuestionIndex
-                  === gameData.questions.length - 1
-                    ? "End Game"
-                    : "Next Question"}
-                </Button>
-              )}
+            <CardHeader>
+              <CardTitle>Game Results</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center">
-                <AddQuestionDialog onSubmit={handleQuestionAdd} />
-                {loadingQuestions && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
-              </div>
-              <QuestionsQueue
-                questions={gameData.questions}
-                onRemoveQuestion={handleQuestionRemove}
-                onMoveQuestion={handleQuestionMove}
-                currentQuestionIndex={
-                  gameData.status === "playing"
-                    ? gameData.currentQuestionIndex
-                    : -1
-                }
-              />
-            </CardContent>
-            {gameData.status === "playing" && currentQuestion && (
-              <CardFooter className="border-t pt-6">
-                <div className="w-full space-y-2">
-                  <h3 className="font-semibold">Current Question</h3>
-                  <p>{currentQuestion.text}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {currentQuestion.options.map((option, index) => (
-                      <div
-                        key={index}
-                        className={`p-2 rounded border ${
-                          index === currentQuestion.correctOption
-                            ? "border-green-500 bg-green-50 dark:bg-green-950"
-                            : "border-border"
-                        }`}
+            <CardContent>
+              <div className="space-y-4">
+                <h3 className="font-semibold">Final Scores</h3>
+                <ul className="space-y-2">
+                  {Object.values(gameData.players)
+                    .filter((player) => !player.isHost)
+                    .sort((a, b) => (b.score || 0) - (a.score || 0))
+                    .map((player, index) => (
+                      <li
+                        key={player.id}
+                        className="flex items-center justify-between p-2 rounded bg-muted"
                       >
-                        {option}
-                      </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{index + 1}.</span>
+                          <span>{player.name}</span>
+                        </div>
+                        <Badge variant="secondary">
+                          Score: {player.score || 0}
+                        </Badge>
+                      </li>
                     ))}
-                  </div>
-                </div>
-              </CardFooter>
-            )}
+                </ul>
+              </div>
+            </CardContent>
           </Card>
+        ) : (
+          isHost && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle>Questions</CardTitle>
+                {gameData.status === "playing" && (
+                  <Button onClick={handleNextQuestion}>
+                    {gameData.currentQuestionIndex ===
+                    gameData.questions.length - 1
+                      ? "End Game"
+                      : "Next Question"}
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <AddQuestionDialog onSubmit={handleQuestionAdd} />
+                  {loadingQuestions && (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  )}
+                </div>
+                <QuestionsQueue
+                  questions={gameData.questions}
+                  onRemoveQuestion={handleQuestionRemove}
+                  onMoveQuestion={handleQuestionMove}
+                  onReorder={handleQuestionReorder}
+                  currentQuestionIndex={
+                    gameData.status === "playing"
+                      ? gameData.currentQuestionIndex
+                      : -1
+                  }
+                />
+              </CardContent>
+              {gameData.status === "playing" && currentQuestion && (
+                <CardFooter className="border-t pt-6">
+                  <div className="w-full space-y-2">
+                    <h3 className="font-semibold">Current Question</h3>
+                    <p>{currentQuestion.text}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {currentQuestion.options.map((option, index) => (
+                        <div
+                          key={index}
+                          className={`p-2 rounded border ${
+                            index === currentQuestion.correctOption
+                              ? "border-green-500 bg-green-50 dark:bg-green-950"
+                              : "border-border"
+                          }`}
+                        >
+                          {option}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardFooter>
+              )}
+            </Card>
+          )
         )}
       </div>
     </div>
