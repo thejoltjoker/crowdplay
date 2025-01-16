@@ -1,4 +1,8 @@
-import { signInAnonymously, type User } from "firebase/auth";
+import {
+  signInAnonymously,
+  signOut as firebaseSignOut,
+  type User,
+} from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
@@ -8,6 +12,8 @@ export interface AuthContextType {
   loading: boolean;
   username: string | null;
   setUsername: (name: string) => void;
+  signOut: () => Promise<void>;
+  isAnonymous: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -15,6 +21,8 @@ export const AuthContext = createContext<AuthContextType>({
   loading: true,
   username: null,
   setUsername: () => {},
+  signOut: async () => {},
+  isAnonymous: true,
 });
 
 export interface AuthProviderProps {
@@ -35,25 +43,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setUser(user);
+        // If user signs in with Google, use their display name as username
+        if (!user.isAnonymous && user.displayName && !username) {
+          setUsername(user.displayName);
+        }
         setLoading(false);
-      }
-      else {
+      } else {
         // Add anonymous authentication
         try {
           await signInAnonymously(auth);
-        }
-        catch (error) {
+        } catch (error) {
           console.error("Failed to sign in anonymously:", error);
         }
       }
     });
 
     return unsubscribe;
-  }, []);
+  }, [username]);
 
   const setUsername = (name: string) => {
     setUsernameState(name);
     localStorage.setItem(USERNAME_KEY, name);
+  };
+
+  const signOut = async () => {
+    try {
+      await firebaseSignOut(auth);
+      localStorage.removeItem(USERNAME_KEY);
+      setUsernameState(null);
+    } catch (error) {
+      console.error("Error signing out:", error);
+      throw error;
+    }
   };
 
   // Add loading UI handler
@@ -66,7 +87,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, username, setUsername }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        username,
+        setUsername,
+        signOut,
+        isAnonymous: user?.isAnonymous ?? true,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
