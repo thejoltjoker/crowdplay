@@ -9,14 +9,30 @@ permissions:
   pull-requests: write
 jobs:
   build_and_preview:
+    env:
+      FIREBASE_CLI_EXPERIMENTS: webframeworks
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CROWDPLAY_E207F }}
           projectId: crowdplay-e207f
-        env:
-          FIREBASE_CLI_EXPERIMENTS: webframeworks
