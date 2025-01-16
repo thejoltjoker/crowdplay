@@ -11,6 +11,7 @@ import { db } from "@/lib/firebase";
 import { gameSchema } from "@/lib/schemas/game";
 import { questionSchema } from "@/lib/schemas/question";
 import { userStatsSchema } from "@/lib/schemas/user-stats";
+import { getLocalStats, updateLocalStats } from "@/lib/helpers/local-stats";
 
 export const gameConverter = {
   toFirestore: (data: Game) => {
@@ -204,18 +205,38 @@ export async function joinGame(
 export async function updateUserStats(
   userId: string,
   displayName: string,
-  gameScore: number
+  gameScore: number,
+  isAnonymous: boolean = false,
+  isGameFinished: boolean = false
 ): Promise<void> {
   try {
+    console.log("updateUserStats called with:", {
+      userId,
+      displayName,
+      gameScore,
+      isAnonymous,
+      isGameFinished,
+    });
+
+    // If anonymous, only update local storage
+    if (isAnonymous) {
+      console.log("Updating local stats for anonymous user");
+      updateLocalStats(userId, displayName, gameScore, isGameFinished);
+      return;
+    }
+
     const userStatsRef = doc(db, "userStats", userId).withConverter(
       userStatsConverter
     );
     const userStatsDoc = await getDoc(userStatsRef);
+    const localStats = getLocalStats();
 
     if (userStatsDoc.exists()) {
       const currentStats = userStatsDoc.data();
-      const newTotalScore = currentStats.totalScore + gameScore;
-      const newGamesPlayed = currentStats.gamesPlayed + 1;
+      const newTotalScore =
+        currentStats.totalScore + gameScore + (localStats?.totalScore || 0);
+      const newGamesPlayed =
+        currentStats.gamesPlayed + 1 + (localStats?.gamesPlayed || 0);
 
       await updateDoc(userStatsRef, {
         totalScore: newTotalScore,
@@ -225,12 +246,16 @@ export async function updateUserStats(
         displayName, // Update display name in case it changed
       });
     } else {
+      // For new users, include local stats if they exist
+      const totalScore = gameScore + (localStats?.totalScore || 0);
+      const gamesPlayed = 1 + (localStats?.gamesPlayed || 0);
+
       await setDoc(userStatsRef, {
         userId,
         displayName,
-        totalScore: gameScore,
-        gamesPlayed: 1,
-        averageScore: gameScore,
+        totalScore,
+        gamesPlayed,
+        averageScore: totalScore / gamesPlayed,
         lastGamePlayed: Date.now(),
       });
     }

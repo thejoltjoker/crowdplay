@@ -21,7 +21,7 @@ import { useAuth } from "@/providers/auth";
 function GamePage() {
   const { gameId: gameCode } = useParams();
   const navigate = useNavigate();
-  const { user, username } = useAuth();
+  const { user, username, isAnonymous } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [gameData, setGameData] = useState<Game | null>(null);
@@ -156,6 +156,17 @@ function GamePage() {
         [`players.${user.uid}.responseTime`]: responseTime,
         [`players.${user.uid}.lastQuestionScore`]: score,
       });
+
+      // Update local stats for anonymous users after each answer
+      if (isAnonymous) {
+        console.log("Updating local stats after answer:", {
+          score,
+          isCorrect,
+          isAnonymous,
+        });
+        // Pass false for isGameFinished since this is just an answer
+        updateUserStats(user.uid, username || "Anonymous", score, true, false);
+      }
     } catch (error) {
       console.error("Error submitting answer:", error);
       setError("Error submitting answer");
@@ -182,6 +193,14 @@ function GamePage() {
         [`players.${user.uid}.responseTime`]:
           Date.now() - gameData.currentQuestionStartedAt,
       });
+
+      // Update local stats for anonymous users with zero score when time is up
+      if (isAnonymous) {
+        console.log("Updating local stats after time up (zero score)");
+        // Pass false for isGameFinished since this is just a timeout
+        updateUserStats(user.uid, username || "Anonymous", 0, true, false);
+      }
+
       setHasAnswered(true);
     } catch (error) {
       console.error("Error handling time up:", error);
@@ -197,6 +216,25 @@ function GamePage() {
       const nextQuestionIndex = gameData.currentQuestionIndex + 1;
       const isLastQuestion = nextQuestionIndex >= gameData.questions.length;
 
+      // Calculate final scores for all players
+      const finalScores = new Map<string, number>();
+      Object.entries(gameData.players).forEach(([playerId, player]) => {
+        // Include current score and last question score if answered
+        const currentScore = player.score || 0;
+        const lastQuestionScore = player.hasAnswered
+          ? player.lastQuestionScore || 0
+          : 0;
+        const totalScore = currentScore + lastQuestionScore;
+        console.log("Calculating score for player:", {
+          playerId,
+          currentScore,
+          lastQuestionScore,
+          totalScore,
+          hasAnswered: player.hasAnswered,
+        });
+        finalScores.set(playerId, totalScore);
+      });
+
       // Reset all players' hasAnswered status and create update object
       const updates: Record<string, any> = {
         currentQuestionIndex: nextQuestionIndex,
@@ -204,24 +242,54 @@ function GamePage() {
         currentQuestionStartedAt: Date.now(),
       };
 
-      // Update final scores for all players
+      // Update scores in the game document
       Object.entries(gameData.players).forEach(([playerId, player]) => {
-        if (player.hasAnswered) {
-          // Add the last question's score to the total score
-          updates[`players.${playerId}.score`] =
-            (player.score || 0) + (player.lastQuestionScore || 0);
-        }
+        const finalScore = finalScores.get(playerId) || 0;
+        updates[`players.${playerId}.score`] = finalScore;
         updates[`players.${playerId}.hasAnswered`] = false;
       });
 
+      console.log("Updating game with scores:", updates);
       await updateDoc(gameRef, updates);
 
       if (isLastQuestion) {
+        console.log(
+          "Game finished, updating stats. Current user anonymous:",
+          isAnonymous
+        );
+        console.log(
+          "Final scores for all players:",
+          Object.fromEntries(finalScores)
+        );
+
         // Update stats for all players when game finishes
         const playerPromises = Object.entries(gameData.players).map(
           ([playerId, player]) => {
-            const finalScore = player.score + (player.lastQuestionScore || 0);
-            return updateUserStats(playerId, player.name, finalScore);
+            const finalScore = finalScores.get(playerId) || 0;
+            // Pass isAnonymous flag based on whether the player is the current user
+            const isPlayerAnonymous =
+              playerId === user.uid ? isAnonymous : false;
+            console.log(
+              "Updating stats for player:",
+              playerId,
+              "score:",
+              finalScore,
+              "anonymous:",
+              isPlayerAnonymous,
+              "name:",
+              player.name,
+              "hasAnswered:",
+              player.hasAnswered,
+              "lastQuestionScore:",
+              player.lastQuestionScore
+            );
+            return updateUserStats(
+              playerId,
+              player.name,
+              finalScore,
+              isPlayerAnonymous,
+              isLastQuestion // Pass isLastQuestion as isGameFinished
+            );
           }
         );
         await Promise.all(playerPromises);
