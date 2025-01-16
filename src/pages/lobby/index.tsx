@@ -31,7 +31,7 @@ import { isGameHost } from "@/lib/helpers/game-state";
 import { useAuth } from "@/providers/auth";
 
 function LobbyPage() {
-  const { id: gameCode } = useParams();
+  const { gameId: gameCode } = useParams();
   const navigate = useNavigate();
   const { user, username } = useAuth();
   const [loading, setLoading] = useState(true);

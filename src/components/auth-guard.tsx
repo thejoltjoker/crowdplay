@@ -1,16 +1,20 @@
 import React from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
 import { useAuth } from "@/providers/auth";
 
-const AuthGuard: React.FC = () => {
+interface AuthGuardProps {
+  children: React.ReactNode;
+}
+
+const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const { user } = useAuth();
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/" />;
   }
 
-  return <Outlet />;
+  return <>{children}</>;
 };
 
 export default AuthGuard;
