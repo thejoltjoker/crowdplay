@@ -6,7 +6,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -29,29 +28,21 @@ interface QuestionsQueueProps {
   currentQuestionIndex?: number;
 }
 
-interface SortableQuestionItemProps {
-  question: Question;
-  index: number;
-  currentQuestionIndex: number;
-  onRemoveQuestion: (id: string) => void;
-  isDisabled: boolean;
-}
-
 function SortableQuestionItem({
   question,
   index,
   currentQuestionIndex,
   onRemoveQuestion,
   isDisabled,
-}: SortableQuestionItemProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: question.id, disabled: isDisabled });
+}: {
+  question: Question;
+  index: number;
+  currentQuestionIndex: number;
+  onRemoveQuestion: (id: string) => void;
+  isDisabled: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: question.id, disabled: isDisabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -63,12 +54,10 @@ function SortableQuestionItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between p-3 rounded border",
+        "flex items-center justify-between p-3 rounded border relative",
         index === currentQuestionIndex
           ? "border-primary bg-primary/5"
-          : "border-border",
-        isDragging && "opacity-50",
-        isDisabled && "opacity-50 cursor-not-allowed"
+          : "border-border"
       )}
     >
       <div className="flex items-center gap-2 flex-1">
@@ -79,9 +68,9 @@ function SortableQuestionItem({
             "cursor-grab active:cursor-grabbing",
             isDisabled && "cursor-not-allowed"
           )}
+          disabled={isDisabled}
           {...attributes}
           {...listeners}
-          disabled={isDisabled}
         >
           <GripVertical className="h-4 w-4" />
         </Button>
@@ -112,17 +101,13 @@ export function QuestionsQueue({
   currentQuestionIndex = -1,
 }: QuestionsQueueProps) {
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
+    useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (event: any) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
