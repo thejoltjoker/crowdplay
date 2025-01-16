@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Progress } from "@/components/ui/progress";
+import { StyledProgress } from "./styled-progress";
 
 interface QuestionTimerProps {
   timeLimit: number | null;
@@ -46,7 +47,7 @@ export function QuestionTimer({
         <span>Time Remaining</span>
         <span>{Math.ceil(timeLeft)}s</span>
       </div>
-      <Progress
+      <StyledProgress
         value={progress}
         className="w-full transition-all duration-100 ease-linear"
       />
