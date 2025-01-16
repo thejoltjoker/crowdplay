@@ -15,7 +15,7 @@ import { gameConverter, joinGame } from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
 
 function GamePage() {
-  const { id: gameCode } = useParams();
+  const { gameId: gameCode } = useParams();
   const navigate = useNavigate();
   const { user, username } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -23,10 +23,15 @@ function GamePage() {
   const [gameData, setGameData] = useState<Game | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
-    if (!gameCode) return;
+    if (!gameCode || !user || !username) {
+      setLoading(false);
+      setError("Missing required information");
+      return;
+    }
 
     const unsubscribe = onSnapshot(
       doc(db, "games", gameCode).withConverter(gameConverter),
@@ -40,8 +45,8 @@ function GamePage() {
         const data = doc.data();
 
         // If user is not in the game yet, check if late join is allowed
-        if (user && username && !data.players[user.uid] && !isJoining) {
-          if (!data.allowLateJoin) {
+        if (!data.players[user.uid] && !isJoining) {
+          if (!data.allowLateJoin && data.status !== "waiting") {
             setError("Late joining is not allowed for this game");
             setLoading(false);
             return;
@@ -56,15 +61,18 @@ function GamePage() {
             console.error("Error joining game:", error);
             setError("Error joining game");
             setLoading(false);
+            setIsJoining(false);
             return;
           }
         }
 
         setGameData(data);
+        setIsJoining(false);
 
-        // Reset hasAnswered when question changes
+        // Reset states when question changes
         if (data.currentQuestionIndex !== gameData?.currentQuestionIndex) {
           setHasAnswered(false);
+          setSelectedAnswer(null);
         }
 
         // Set current question
@@ -84,6 +92,7 @@ function GamePage() {
         console.error("Error fetching game:", error);
         setError("Error fetching game data");
         setLoading(false);
+        setIsJoining(false);
       }
     );
 
@@ -133,6 +142,9 @@ function GamePage() {
         }
       }
 
+      setSelectedAnswer(optionIndex);
+      setHasAnswered(true);
+
       // Record the player's answer and score
       await updateDoc(gameRef, {
         [`players.${user.uid}.hasAnswered`]: true,
@@ -140,11 +152,36 @@ function GamePage() {
         [`players.${user.uid}.responseTime`]: responseTime,
         [`players.${user.uid}.lastQuestionScore`]: score,
       });
-
-      setHasAnswered(true);
     } catch (error) {
       console.error("Error submitting answer:", error);
       setError("Error submitting answer");
+    }
+  };
+
+  const handleTimeUp = async () => {
+    if (
+      !gameCode ||
+      !user ||
+      !gameData ||
+      !currentQuestion ||
+      hasAnswered ||
+      !gameData.currentQuestionStartedAt
+    )
+      return;
+
+    try {
+      const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+      await updateDoc(gameRef, {
+        [`players.${user.uid}.hasAnswered`]: true,
+        [`players.${user.uid}.lastAnswerCorrect`]: false,
+        [`players.${user.uid}.lastQuestionScore`]: 0,
+        [`players.${user.uid}.responseTime`]:
+          Date.now() - gameData.currentQuestionStartedAt,
+      });
+      setHasAnswered(true);
+    } catch (error) {
+      console.error("Error handling time up:", error);
+      setError("Error handling time up");
     }
   };
 
@@ -175,33 +212,6 @@ function GamePage() {
     } catch (error) {
       console.error("Error moving to next question:", error);
       setError("Error moving to next question");
-    }
-  };
-
-  const handleTimeUp = async () => {
-    if (
-      !gameCode ||
-      !user ||
-      !gameData ||
-      !currentQuestion ||
-      hasAnswered ||
-      !gameData.currentQuestionStartedAt
-    )
-      return;
-
-    try {
-      const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
-      await updateDoc(gameRef, {
-        [`players.${user.uid}.hasAnswered`]: true,
-        [`players.${user.uid}.lastAnswerCorrect`]: false,
-        [`players.${user.uid}.lastQuestionScore`]: 0,
-        [`players.${user.uid}.responseTime`]:
-          Date.now() - gameData.currentQuestionStartedAt,
-      });
-      setHasAnswered(true);
-    } catch (error) {
-      console.error("Error handling time up:", error);
-      setError("Error handling time up");
     }
   };
 
@@ -239,8 +249,11 @@ function GamePage() {
   const answeredPercentage =
     totalPlayers > 0 ? (answeredCount / totalPlayers) * 100 : 0;
 
+  const playerAnswer = user ? gameData.players[user.uid] : null;
+  const isAnswerCorrect = playerAnswer?.lastAnswerCorrect;
+
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto p-4">
       <Card>
         <CardHeader>
           <CardTitle>
@@ -248,66 +261,63 @@ function GamePage() {
             {gameData.questions.length}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-8">
-          <div className="text-center">
-            <p className="text-2xl font-medium mb-2">{currentQuestion.text}</p>
-            <div style={{ display: "none" }}>
-              {JSON.stringify({
-                hasAnswered,
-                currentQuestionStartedAt: gameData.currentQuestionStartedAt,
-                timeLimit: currentQuestion.timeLimit,
-              })}
-            </div>
-            {!hasAnswered &&
-              gameData.currentQuestionStartedAt &&
-              currentQuestion.timeLimit && (
-                <QuestionTimer
-                  timeLimit={currentQuestion.timeLimit}
-                  startedAt={gameData.currentQuestionStartedAt}
-                  onTimeUp={handleTimeUp}
-                />
-              )}
-          </div>
-
-          {!hasAnswered ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {currentQuestion.options?.map((option, index) => (
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">{currentQuestion.text}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {currentQuestion.options.map((option, index) => (
                 <Button
                   key={index}
                   onClick={() => handleAnswer(index)}
-                  variant="outline"
-                  className="p-8 text-lg h-auto whitespace-normal"
-                  size="lg"
+                  disabled={hasAnswered}
+                  variant={
+                    hasAnswered && index === selectedAnswer
+                      ? "secondary"
+                      : "outline"
+                  }
+                  className="h-auto py-4 px-6"
                 >
                   {option}
                 </Button>
               ))}
             </div>
-          ) : (
-            <div className="text-center space-y-4">
-              <p className="text-lg font-medium">
-                Waiting for other players...
+            {hasAnswered && (
+              <p className="text-center text-sm text-muted-foreground">
+                Waiting for other players to answer...
               </p>
-              <div className="flex items-center gap-2 justify-center text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>
-                  {answeredCount} of
-                  {totalPlayers} answered
-                </span>
-              </div>
-              <Progress value={answeredPercentage} className="w-full" />
-            </div>
+            )}
+          </div>
+
+          {currentQuestion.timeLimit && gameData.currentQuestionStartedAt && (
+            <QuestionTimer
+              timeLimit={currentQuestion.timeLimit}
+              startedAt={gameData.currentQuestionStartedAt}
+              onTimeUp={handleTimeUp}
+            />
           )}
 
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>
-              Players:
-              {totalPlayers}
-            </span>
-            <span>
-              Your Score: {gameData.players[user?.uid ?? ""]?.score ?? 0}
-            </span>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4" />
+                <span>
+                  {answeredCount} of {totalPlayers} answered
+                </span>
+              </div>
+              <span>{Math.round(answeredPercentage)}%</span>
+            </div>
+            <Progress value={answeredPercentage} />
           </div>
+
+          {isHost && (
+            <Button
+              onClick={handleNextQuestion}
+              disabled={answeredCount < totalPlayers}
+              className="w-full"
+            >
+              Next Question
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>

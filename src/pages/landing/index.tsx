@@ -1,5 +1,5 @@
 import { LogOut, Pencil } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -20,13 +20,21 @@ export function LandingPage() {
   const navigate = useNavigate();
   const { user, username, setUsername, signOut, isAnonymous } = useAuth();
   const [gameCode, setGameCode] = useState("");
-  const [isEditingName, setIsEditingName] = useState(false);
   const [tempUsername, setTempUsername] = useState(username || "");
+  const [isEditing, setIsEditing] = useState(!username);
+
+  // Show username input by default if no username is set
+  useEffect(() => {
+    if (username) {
+      setTempUsername(username);
+      setIsEditing(false);
+    }
+  }, [username]);
 
   const handleCreateGame = async () => {
-    if (!user || !username) return;
+    if (!user || !tempUsername) return;
     try {
-      const code = await createGame(user.uid, username);
+      const code = await createGame(user.uid, tempUsername);
       navigate(`/lobby/${code}`);
     } catch (error) {
       console.error("Error creating game:", error);
@@ -34,20 +42,20 @@ export function LandingPage() {
   };
 
   const handleJoinGame = async () => {
-    if (!user || !username || !gameCode) return;
+    if (!user || !tempUsername || !gameCode) return;
     try {
-      await joinGame(gameCode, user.uid, username);
+      await joinGame(gameCode, user.uid, tempUsername);
       navigate(`/lobby/${gameCode}`);
     } catch (error) {
       console.error("Error joining game:", error);
     }
   };
 
-  const handleEditName = () => {
-    if (isEditingName && tempUsername) {
+  const handleUsernameSubmit = () => {
+    if (tempUsername && tempUsername !== username) {
       setUsername(tempUsername);
     }
-    setIsEditingName(!isEditingName);
+    setIsEditing(false);
   };
 
   const handleGoogleSignIn = async () => {
@@ -64,34 +72,102 @@ export function LandingPage() {
         <CardHeader>
           <CardTitle>Welcome to CrowdPlay</CardTitle>
           <CardDescription>
-            {isAnonymous
-              ? "You're playing anonymously. Sign in with Google to save your progress!"
-              : "You're signed in with Google"}
+            Join a multiplayer quiz game and compete with friends!
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           {/* Username Section */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>Username</Label>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleEditName}
-                disabled={!isAnonymous}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-            </div>
-            {isEditingName ? (
+            <Label>Choose your player name</Label>
+            <div className="relative">
               <Input
                 value={tempUsername}
                 onChange={(e) => setTempUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder="Enter a username"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && isEditing) {
+                    handleUsernameSubmit();
+                  }
+                }}
+                disabled={!isAnonymous || (!isEditing && username)}
+                className={isEditing ? "pr-20" : "pr-10"}
               />
-            ) : (
-              <div className="py-2">{username}</div>
+              {isAnonymous && (
+                <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
+                  {isEditing && (
+                    <Button
+                      size="sm"
+                      onClick={handleUsernameSubmit}
+                      disabled={!tempUsername || tempUsername === username}
+                    >
+                      Save
+                    </Button>
+                  )}
+                  {!isEditing && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setIsEditing(true)}
+                      className="h-8 w-8"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+            {!isAnonymous && (
+              <p className="text-xs text-muted-foreground">
+                Using Google account name
+              </p>
             )}
+          </div>
+
+          {/* Game Controls - Join Game First */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Join a Game</Label>
+              <div className="flex space-x-2">
+                <Input
+                  value={gameCode}
+                  onChange={(e) => setGameCode(e.target.value.toUpperCase())}
+                  placeholder="Enter game code"
+                  className="flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && gameCode && username) {
+                      handleJoinGame();
+                    }
+                  }}
+                />
+                <Button
+                  onClick={handleJoinGame}
+                  disabled={!username || !gameCode}
+                  size="lg"
+                >
+                  Play!
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  or
+                </span>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleCreateGame}
+              disabled={!username}
+            >
+              Create New Game
+            </Button>
           </div>
 
           {/* Authentication Section */}
@@ -110,31 +186,6 @@ export function LandingPage() {
                 Sign Out
               </Button>
             )}
-          </div>
-
-          {/* Game Controls */}
-          <div className="space-y-2 pt-4">
-            <Button
-              className="w-full"
-              onClick={handleCreateGame}
-              disabled={!username}
-            >
-              Create Game
-            </Button>
-            <div className="flex space-x-2">
-              <Input
-                value={gameCode}
-                onChange={(e) => setGameCode(e.target.value.toUpperCase())}
-                placeholder="Enter game code"
-                className="flex-1"
-              />
-              <Button
-                onClick={handleJoinGame}
-                disabled={!username || !gameCode}
-              >
-                Join Game
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
