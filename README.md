@@ -6,7 +6,8 @@ AI proompted realtime multiplayer quiz game.
 
 ## TODO
 
-- [ ] Add ability to set a timer per question
+- [x] Add ability to set a timer per question
+  - [x] Make it optional
 - [ ] Allow more open ended questions without a defined result as they're asked
 - [ ] QR code to join game
 - [ ] Global leaderboard
@@ -14,6 +15,8 @@ AI proompted realtime multiplayer quiz game.
   - [ ] Shows QR code to join
   - [ ] Shows leaderboard
   - [ ] Shows questions asked
+- [ ] Scoring
+- [ ] User authentication to persist total score
 
 ### Question types
 

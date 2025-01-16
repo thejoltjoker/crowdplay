@@ -26,8 +26,7 @@ function GamePage() {
   const [isJoining, setIsJoining] = useState(false);
 
   useEffect(() => {
-    if (!gameCode)
-      return;
+    if (!gameCode) return;
 
     const unsubscribe = onSnapshot(
       doc(db, "games", gameCode).withConverter(gameConverter),
@@ -53,8 +52,7 @@ function GamePage() {
             await joinGame(gameCode, user.uid, username);
             // Don't set game data here, it will be updated by the next snapshot
             return;
-          }
-          catch (error) {
+          } catch (error) {
             console.error("Error joining game:", error);
             setError("Error joining game");
             setLoading(false);
@@ -86,7 +84,7 @@ function GamePage() {
         console.error("Error fetching game:", error);
         setError("Error fetching game data");
         setLoading(false);
-      },
+      }
     );
 
     return () => unsubscribe();
@@ -101,12 +99,12 @@ function GamePage() {
 
   const handleAnswer = async (optionIndex: number) => {
     if (
-      !gameCode
-      || !user
-      || !gameData
-      || !currentQuestion
-      || hasAnswered
-      || !gameData.currentQuestionStartedAt
+      !gameCode ||
+      !user ||
+      !gameData ||
+      !currentQuestion ||
+      hasAnswered ||
+      !gameData.currentQuestionStartedAt
     ) {
       return;
     }
@@ -116,26 +114,42 @@ function GamePage() {
 
       // Calculate response time in milliseconds
       const responseTime = Date.now() - gameData.currentQuestionStartedAt;
-
-      // Record the player's answer without updating score yet
       const isCorrect = optionIndex === currentQuestion.correctOption;
+
+      // Calculate score based on time and correctness
+      let score = 0;
+      if (isCorrect) {
+        if (currentQuestion.timeLimit) {
+          // For timed questions, score decreases with time (max 100)
+          const timeElapsedSeconds = responseTime / 1000;
+          const timeRatio = Math.max(
+            0,
+            1 - timeElapsedSeconds / currentQuestion.timeLimit
+          );
+          score = Math.round(100 * timeRatio);
+        } else {
+          // For untimed questions, score is 100 if correct
+          score = 100;
+        }
+      }
+
+      // Record the player's answer and score
       await updateDoc(gameRef, {
         [`players.${user.uid}.hasAnswered`]: true,
         [`players.${user.uid}.lastAnswerCorrect`]: isCorrect,
         [`players.${user.uid}.responseTime`]: responseTime,
+        [`players.${user.uid}.lastQuestionScore`]: score,
       });
 
       setHasAnswered(true);
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error submitting answer:", error);
       setError("Error submitting answer");
     }
   };
 
   const handleNextQuestion = async () => {
-    if (!gameCode || !user || !gameData || !currentQuestion)
-      return;
+    if (!gameCode || !user || !gameData || !currentQuestion) return;
 
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
@@ -158,15 +172,21 @@ function GamePage() {
       if (isLastQuestion) {
         navigate(`/results/${gameCode}`);
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error moving to next question:", error);
       setError("Error moving to next question");
     }
   };
 
   const handleTimeUp = async () => {
-    if (!gameCode || !user || !gameData || !currentQuestion || hasAnswered)
+    if (
+      !gameCode ||
+      !user ||
+      !gameData ||
+      !currentQuestion ||
+      hasAnswered ||
+      !gameData.currentQuestionStartedAt
+    )
       return;
 
     try {
@@ -174,10 +194,12 @@ function GamePage() {
       await updateDoc(gameRef, {
         [`players.${user.uid}.hasAnswered`]: true,
         [`players.${user.uid}.lastAnswerCorrect`]: false,
+        [`players.${user.uid}.lastQuestionScore`]: 0,
+        [`players.${user.uid}.responseTime`]:
+          Date.now() - gameData.currentQuestionStartedAt,
       });
       setHasAnswered(true);
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error handling time up:", error);
       setError("Error handling time up");
     }
@@ -207,27 +229,22 @@ function GamePage() {
     );
   }
 
-  const isHost
-    = Object.values(gameData.players).find(p => p.isHost)?.id === user?.uid;
+  const isHost =
+    Object.values(gameData.players).find((p) => p.isHost)?.id === user?.uid;
   const activePlayers = Object.values(gameData.players).filter(
-    p => !p.isHost,
+    (p) => !p.isHost
   );
-  const answeredCount = activePlayers.filter(p => p.hasAnswered).length;
+  const answeredCount = activePlayers.filter((p) => p.hasAnswered).length;
   const totalPlayers = activePlayers.length;
-  const answeredPercentage
-    = totalPlayers > 0 ? (answeredCount / totalPlayers) * 100 : 0;
+  const answeredPercentage =
+    totalPlayers > 0 ? (answeredCount / totalPlayers) * 100 : 0;
 
   return (
     <div className="container mx-auto py-8">
       <Card>
         <CardHeader>
           <CardTitle>
-            Question
-            {" "}
-            {gameData.currentQuestionIndex + 1}
-            {" "}
-            of
-            {" "}
+            Question {gameData.currentQuestionIndex + 1} of{" "}
             {gameData.questions.length}
           </CardTitle>
         </CardHeader>
@@ -241,50 +258,46 @@ function GamePage() {
                 timeLimit: currentQuestion.timeLimit,
               })}
             </div>
-            {!hasAnswered && gameData.currentQuestionStartedAt && (
-              <QuestionTimer
-                timeLimit={currentQuestion.timeLimit}
-                startedAt={gameData.currentQuestionStartedAt}
-                onTimeUp={handleTimeUp}
-              />
-            )}
+            {!hasAnswered &&
+              gameData.currentQuestionStartedAt &&
+              currentQuestion.timeLimit && (
+                <QuestionTimer
+                  timeLimit={currentQuestion.timeLimit}
+                  startedAt={gameData.currentQuestionStartedAt}
+                  onTimeUp={handleTimeUp}
+                />
+              )}
           </div>
 
-          {!hasAnswered
-            ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {currentQuestion.options?.map((option, index) => (
-                    <Button
-                      key={index}
-                      onClick={() => handleAnswer(index)}
-                      variant="outline"
-                      className="p-8 text-lg h-auto whitespace-normal"
-                      size="lg"
-                    >
-                      {option}
-                    </Button>
-                  ))}
-                </div>
-              )
-            : (
-                <div className="text-center space-y-4">
-                  <p className="text-lg font-medium">
-                    Waiting for other players...
-                  </p>
-                  <div className="flex items-center gap-2 justify-center text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    <span>
-                      {answeredCount}
-                      {" "}
-                      of
-                      {totalPlayers}
-                      {" "}
-                      answered
-                    </span>
-                  </div>
-                  <Progress value={answeredPercentage} className="w-full" />
-                </div>
-              )}
+          {!hasAnswered ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {currentQuestion.options?.map((option, index) => (
+                <Button
+                  key={index}
+                  onClick={() => handleAnswer(index)}
+                  variant="outline"
+                  className="p-8 text-lg h-auto whitespace-normal"
+                  size="lg"
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center space-y-4">
+              <p className="text-lg font-medium">
+                Waiting for other players...
+              </p>
+              <div className="flex items-center gap-2 justify-center text-muted-foreground">
+                <Users className="h-4 w-4" />
+                <span>
+                  {answeredCount} of
+                  {totalPlayers} answered
+                </span>
+              </div>
+              <Progress value={answeredPercentage} className="w-full" />
+            </div>
+          )}
 
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>
@@ -292,9 +305,7 @@ function GamePage() {
               {totalPlayers}
             </span>
             <span>
-              Your Score:
-              {" "}
-              {gameData.players[user?.uid ?? ""]?.score ?? 0}
+              Your Score: {gameData.players[user?.uid ?? ""]?.score ?? 0}
             </span>
           </div>
         </CardContent>

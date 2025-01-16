@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Dynamic schema based on number of options
 function createQuestionSchema(optionCount: number) {
@@ -41,13 +42,11 @@ function createQuestionSchema(optionCount: number) {
     correctAnswer: z
       .string()
       .refine(
-        val => val >= "0" && val < optionCount.toString(),
-        "Please select a valid option",
+        (val) => val >= "0" && val < optionCount.toString(),
+        "Please select a valid option"
       ),
-    timeLimit: z
-      .number()
-      .min(5, "Time limit must be at least 5 seconds")
-      .max(120, "Time limit cannot exceed 120 seconds"),
+    hasTimeLimit: z.boolean().default(false),
+    timeLimit: z.number().nullable().default(null),
   });
 }
 
@@ -55,7 +54,8 @@ function createQuestionSchema(optionCount: number) {
 interface QuestionFormValues {
   questionText: string;
   correctAnswer?: string;
-  timeLimit: number;
+  hasTimeLimit: boolean;
+  timeLimit: number | null;
   [key: `option${number}`]: string;
 }
 
@@ -76,6 +76,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
     defaultValues: {
       questionText: "",
       correctAnswer: undefined,
+      hasTimeLimit: true,
       timeLimit: 30,
     },
   });
@@ -144,27 +145,47 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
 
             <FormField
               control={form.control}
-              name="timeLimit"
+              name="hasTimeLimit"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Time Limit (seconds)</FormLabel>
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0">
                   <FormControl>
-                    <Input
-                      type="number"
-                      min={5}
-                      max={120}
-                      defaultValue={30}
-                      {...field}
-                      onChange={e => field.onChange(Number(e.target.value))}
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
                     />
                   </FormControl>
-                  <p className="text-sm text-muted-foreground">
-                    Default is 30 seconds. Min: 5s, Max: 120s
-                  </p>
-                  <FormMessage />
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Enable Time Limit</FormLabel>
+                  </div>
                 </FormItem>
               )}
             />
+
+            {form.watch("hasTimeLimit") && (
+              <FormField
+                control={form.control}
+                name="timeLimit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Time Limit (seconds)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={5}
+                        max={120}
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        value={field.value || 30}
+                      />
+                    </FormControl>
+                    <p className="text-sm text-muted-foreground">
+                      Default is 30 seconds. Min: 5s, Max: 120s
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <div className="space-y-4">
               {Array.from({ length: optionCount }).map((_, index) => (
@@ -239,9 +260,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                             <RadioGroupItem value={index.toString()} />
                           </FormControl>
                           <FormLabel className="font-normal">
-                            Option
-                            {" "}
-                            {index + 1}
+                            Option {index + 1}
                           </FormLabel>
                         </FormItem>
                       ))}

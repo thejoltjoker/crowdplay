@@ -34,17 +34,19 @@ function SortableQuestionItem({
   currentQuestionIndex,
   onRemoveQuestion,
   isDisabled,
+  isHost,
 }: {
   question: Question;
   index: number;
   currentQuestionIndex: number;
   onRemoveQuestion: (id: string) => void;
   isDisabled: boolean;
+  isHost: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition }
-    = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({
       id: question.id,
-      disabled: isDisabled || index <= currentQuestionIndex,
+      disabled: !isHost || index <= currentQuestionIndex,
     });
 
   const style = {
@@ -62,7 +64,7 @@ function SortableQuestionItem({
           ? "border-primary bg-primary/5"
           : index < currentQuestionIndex
             ? "border-muted bg-muted/50"
-            : "border-border",
+            : "border-border"
       )}
     >
       <div className="flex items-center gap-2 flex-1">
@@ -71,10 +73,10 @@ function SortableQuestionItem({
           size="icon"
           className={cn(
             "cursor-grab active:cursor-grabbing",
-            (isDisabled || index <= currentQuestionIndex)
-            && "cursor-not-allowed opacity-50",
+            (!isHost || index <= currentQuestionIndex) &&
+              "cursor-not-allowed opacity-50"
           )}
-          disabled={isDisabled || index <= currentQuestionIndex}
+          disabled={!isHost || index <= currentQuestionIndex}
           {...attributes}
           {...listeners}
         >
@@ -83,11 +85,8 @@ function SortableQuestionItem({
         <div>
           <p className="font-medium">{question.text}</p>
           <p className="text-sm text-muted-foreground">
-            {question.options.length}
-            {" "}
-            options ·
-            {question.timeLimit}
-            s
+            {question.options.length} options
+            {question.timeLimit && <> · {question.timeLimit}s</>}
           </p>
         </div>
       </div>
@@ -95,7 +94,7 @@ function SortableQuestionItem({
         variant="ghost"
         size="icon"
         onClick={() => onRemoveQuestion(question.id)}
-        disabled={currentQuestionIndex >= 0}
+        disabled={!isHost || index <= currentQuestionIndex}
       >
         <Trash2 className="h-4 w-4" />
       </Button>
@@ -109,21 +108,26 @@ export function QuestionsQueue({
   onMoveQuestion,
   onReorder,
   currentQuestionIndex = -1,
-}: QuestionsQueueProps) {
+  isHost = false,
+}: QuestionsQueueProps & { isHost?: boolean }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    }),
+    })
   );
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = questions.findIndex(q => q.id === active.id);
-      const newIndex = questions.findIndex(q => q.id === over.id);
-      onReorder(oldIndex, newIndex);
+      const oldIndex = questions.findIndex((q) => q.id === active.id);
+      const newIndex = questions.findIndex((q) => q.id === over.id);
+
+      // Only allow reordering of future questions
+      if (oldIndex > currentQuestionIndex && newIndex > currentQuestionIndex) {
+        onReorder(oldIndex, newIndex);
+      }
     }
   };
 
@@ -142,7 +146,7 @@ export function QuestionsQueue({
       onDragEnd={handleDragEnd}
     >
       <SortableContext
-        items={questions.map(q => q.id)}
+        items={questions.map((q) => q.id)}
         strategy={verticalListSortingStrategy}
       >
         <ul className="space-y-2">
@@ -153,7 +157,8 @@ export function QuestionsQueue({
               index={index}
               currentQuestionIndex={currentQuestionIndex}
               onRemoveQuestion={onRemoveQuestion}
-              isDisabled={currentQuestionIndex >= 0}
+              isDisabled={!isHost}
+              isHost={isHost}
             />
           ))}
         </ul>

@@ -5,7 +5,7 @@ export const questionSchema = z.object({
   text: z.string(),
   options: z.array(z.string()),
   correctOption: z.number(),
-  timeLimit: z.number().default(30),
+  timeLimit: z.number().nullable().default(30),
 });
 
 export type Question = z.infer<typeof questionSchema>;
