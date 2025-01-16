@@ -28,7 +28,7 @@ export function NavBar() {
     <>
       {/* Desktop Navigation (top) */}
       <nav className="hidden md:block border-b bg-background">
-        <div className="container mx-auto px-4">
+        <div className="mx-auto px-4">
           <div className="flex h-14 items-center justify-between">
             <div className="flex items-center space-x-8 justify-between  w-full">
               <div className="text-xl font-bold">CrowdPlay</div>
@@ -55,8 +55,8 @@ export function NavBar() {
       </nav>
 
       {/* Mobile Navigation (bottom) */}
-      <nav className="fixed bottom-0 left-0 right-0 border-t bg-background md:hidden">
-        <div className="container mx-auto px-4">
+      <nav className="fixed bottom-0 left-0 right-0 border-t bg-background md:hidden z-50">
+        <div className="mx-auto px-4">
           <div className="flex h-16 items-center justify-around">
             {navItems.map((item) => (
               <Link

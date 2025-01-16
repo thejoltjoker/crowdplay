@@ -87,8 +87,9 @@ export function LandingPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 md:py-12">
-      <Card className="mx-auto max-w-md">
+    <div className=" mx-auto p-4">
+      <h1 className="text-4xl font-bold text-center pt-4 pb-8">Crowdplay</h1>
+      <Card className="mx-auto max-w-screen-sm">
         <CardHeader>
           <CardTitle>Welcome to CrowdPlay</CardTitle>
           <CardDescription>

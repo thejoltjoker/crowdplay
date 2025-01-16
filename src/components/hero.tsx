@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 const Hero: React.FC = () => {
   return (
     <section>
-      <div className="container">
+      <div className="">
         <div className="grid items-center gap-8 lg:grid-cols-2">
           <div className="flex flex-col items-center py-32 text-center lg:mx-auto lg:items-start lg:px-0 lg:text-left">
             <p>New Release</p>
@@ -51,7 +51,7 @@ const Hero: React.FC = () => {
                         opacity={1 - Math.sin(angle)}
                       />
                     );
-                  },
+                  }
                 )}
               </svg>
             </div>

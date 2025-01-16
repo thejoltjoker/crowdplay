@@ -358,7 +358,7 @@ function GamePage() {
   const isAnswerCorrect = playerAnswer?.lastAnswerCorrect;
 
   return (
-    <div className="container mx-auto p-4">
+    <div className=" mx-auto p-4">
       <Card>
         <CardHeader>
           <CardTitle>

@@ -17,6 +17,7 @@ AI proompted realtime multiplayer quiz game.
   - [ ] Shows questions asked
 - [x] Scoring
 - [x] User authentication to persist total score
+- [ ] Themes
 
 ### Question types
 

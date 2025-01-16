@@ -11,7 +11,7 @@ import ResultsPage from "@/pages/results";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background pb-16 md:pb-0">
+    <div className="min-h-screen pb-16 md:pb-0">
       <NavBar />
       {children}
     </div>

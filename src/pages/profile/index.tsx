@@ -126,7 +126,7 @@ export function ProfilePage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 md:py-12 space-y-8">
+    <div className=" mx-auto p-4 space-y-4">
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>
