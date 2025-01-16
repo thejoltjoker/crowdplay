@@ -1,5 +1,5 @@
-import { z } from "zod";
 import dotenv from "dotenv";
+import { z } from "zod";
 
 dotenv.config();
 
@@ -7,6 +7,7 @@ const EnvSchema = z.object({});
 
 export type Env = z.infer<typeof EnvSchema>;
 
+// eslint-disable-next-line node/no-process-env
 const { data: env, error } = EnvSchema.safeParse(process.env);
 
 if (error) {

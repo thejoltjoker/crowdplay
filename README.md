@@ -10,6 +10,10 @@ AI proompted realtime multiplayer quiz game.
 - [ ] Allow more open ended questions without a defined result as they're asked
 - [ ] QR code to join game
 - [ ] Global leaderboard
+- [ ] Spectator mode
+  - [ ] Shows QR code to join
+  - [ ] Shows leaderboard
+  - [ ] Shows questions asked
 
 ### Question types
 

@@ -1,7 +1,6 @@
-import { GripVertical, Trash2 } from "lucide-react";
 import {
-  DndContext,
   closestCenter,
+  DndContext,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -14,6 +13,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, Trash2 } from "lucide-react";
 
 import type { Question } from "@/lib/schemas";
 
@@ -41,8 +41,8 @@ function SortableQuestionItem({
   onRemoveQuestion: (id: string) => void;
   isDisabled: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition }
+    = useSortable({
       id: question.id,
       disabled: isDisabled || index <= currentQuestionIndex,
     });
@@ -62,7 +62,7 @@ function SortableQuestionItem({
           ? "border-primary bg-primary/5"
           : index < currentQuestionIndex
             ? "border-muted bg-muted/50"
-            : "border-border"
+            : "border-border",
       )}
     >
       <div className="flex items-center gap-2 flex-1">
@@ -71,8 +71,8 @@ function SortableQuestionItem({
           size="icon"
           className={cn(
             "cursor-grab active:cursor-grabbing",
-            (isDisabled || index <= currentQuestionIndex) &&
-              "cursor-not-allowed opacity-50"
+            (isDisabled || index <= currentQuestionIndex)
+            && "cursor-not-allowed opacity-50",
           )}
           disabled={isDisabled || index <= currentQuestionIndex}
           {...attributes}
@@ -83,7 +83,11 @@ function SortableQuestionItem({
         <div>
           <p className="font-medium">{question.text}</p>
           <p className="text-sm text-muted-foreground">
-            {question.options.length} options · {question.timeLimit}s
+            {question.options.length}
+            {" "}
+            options ·
+            {question.timeLimit}
+            s
           </p>
         </div>
       </div>
@@ -110,15 +114,15 @@ export function QuestionsQueue({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = questions.findIndex((q) => q.id === active.id);
-      const newIndex = questions.findIndex((q) => q.id === over.id);
+      const oldIndex = questions.findIndex(q => q.id === active.id);
+      const newIndex = questions.findIndex(q => q.id === over.id);
       onReorder(oldIndex, newIndex);
     }
   };
@@ -138,7 +142,7 @@ export function QuestionsQueue({
       onDragEnd={handleDragEnd}
     >
       <SortableContext
-        items={questions.map((q) => q.id)}
+        items={questions.map(q => q.id)}
         strategy={verticalListSortingStrategy}
       >
         <ul className="space-y-2">

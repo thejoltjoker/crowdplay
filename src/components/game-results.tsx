@@ -20,16 +20,22 @@ export function GameResults({ game }: GameResultsProps) {
         <div className="space-y-4">
           <h3 className="font-semibold">Final Scores</h3>
           <ul className="space-y-2">
-            {rankedPlayers.map((player) => (
+            {rankedPlayers.map(player => (
               <li
                 key={player.id}
                 className="flex items-center justify-between p-2 rounded bg-muted"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{player.rank}.</span>
+                  <span className="font-medium">
+                    {player.rank}
+                    .
+                  </span>
                   <span>{player.name}</span>
                 </div>
-                <Badge variant="secondary">Score: {player.score || 0}</Badge>
+                <Badge variant="secondary">
+                  Score:
+                  {player.score || 0}
+                </Badge>
               </li>
             ))}
           </ul>

@@ -1,5 +1,4 @@
 import { signInAnonymously, type User } from "firebase/auth";
-
 import { createContext, useContext, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
@@ -37,11 +36,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (user) {
         setUser(user);
         setLoading(false);
-      } else {
+      }
+      else {
         // Add anonymous authentication
         try {
           await signInAnonymously(auth);
-        } catch (error) {
+        }
+        catch (error) {
           console.error("Failed to sign in anonymously:", error);
         }
       }

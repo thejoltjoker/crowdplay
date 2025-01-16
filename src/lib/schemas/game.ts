@@ -1,15 +1,23 @@
 import { z } from "zod";
 
-import { playerSchema } from "./player";
 import { questionSchema } from "./question";
 
 export const gameSchema = z.object({
   id: z.string(),
-  joinCode: z.string(),
-  status: z.enum(["waiting", "playing", "finished"]).default("waiting"),
-  players: z.record(playerSchema),
-  questions: z.array(questionSchema).default([]),
+  status: z.enum(["waiting", "playing", "finished"]),
   currentQuestionIndex: z.number().default(0),
+  currentQuestionStartedAt: z.number().optional(),
+  questions: z.array(questionSchema),
+  players: z.record(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      isHost: z.boolean().default(false),
+      score: z.number().default(0),
+      hasAnswered: z.boolean().default(false),
+      lastAnswerCorrect: z.boolean().default(false),
+    }),
+  ),
   allowLateJoin: z.boolean().default(false),
 });
 

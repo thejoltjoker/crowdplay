@@ -1,4 +1,6 @@
-import express, { Express, Request, Response } from "express";
+import type { Express, Request, Response } from "express";
+
+import express from "express";
 
 const app: Express = express();
 

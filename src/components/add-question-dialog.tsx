@@ -44,6 +44,10 @@ function createQuestionSchema(optionCount: number) {
         val => val >= "0" && val < optionCount.toString(),
         "Please select a valid option",
       ),
+    timeLimit: z
+      .number()
+      .min(5, "Time limit must be at least 5 seconds")
+      .max(120, "Time limit cannot exceed 120 seconds"),
   });
 }
 
@@ -51,6 +55,7 @@ function createQuestionSchema(optionCount: number) {
 interface QuestionFormValues {
   questionText: string;
   correctAnswer?: string;
+  timeLimit: number;
   [key: `option${number}`]: string;
 }
 
@@ -71,6 +76,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
     defaultValues: {
       questionText: "",
       correctAnswer: undefined,
+      timeLimit: 30,
     },
   });
 
@@ -113,7 +119,8 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Add New Question</DialogTitle>
           <DialogDescription>
-            Create a new question for your quiz. Add between 2-6 options.
+            Create a new question for your quiz. Add between 2-6 options and set
+            a time limit.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -130,6 +137,30 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                   <FormControl>
                     <Input placeholder="Enter your question here" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="timeLimit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Time Limit (seconds)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={5}
+                      max={120}
+                      defaultValue={30}
+                      {...field}
+                      onChange={e => field.onChange(Number(e.target.value))}
+                    />
+                  </FormControl>
+                  <p className="text-sm text-muted-foreground">
+                    Default is 30 seconds. Min: 5s, Max: 120s
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

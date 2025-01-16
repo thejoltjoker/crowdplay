@@ -40,3 +40,9 @@ Performance Optimization:
 - Avoid 'useEffect' if you can
 - Use dynamic loading for non-critical components
 - Optimize images: use WebP format, include size data, implement lazy loading
+
+Commit Messages:
+
+- Use imperative mood for commit messages
+- Use present tense for commit messages
+- Use conventional commit messages

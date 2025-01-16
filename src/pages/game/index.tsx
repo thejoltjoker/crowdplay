@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import type { Game } from "@/lib/schemas/game";
 import type { Question } from "@/lib/schemas/question";
 
+import { QuestionTimer } from "@/components/question-timer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -99,17 +100,29 @@ function GamePage() {
   ]);
 
   const handleAnswer = async (optionIndex: number) => {
-    if (!gameCode || !user || !gameData || !currentQuestion || hasAnswered)
+    if (
+      !gameCode
+      || !user
+      || !gameData
+      || !currentQuestion
+      || hasAnswered
+      || !gameData.currentQuestionStartedAt
+    ) {
       return;
+    }
 
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+
+      // Calculate response time in milliseconds
+      const responseTime = Date.now() - gameData.currentQuestionStartedAt;
 
       // Record the player's answer without updating score yet
       const isCorrect = optionIndex === currentQuestion.correctOption;
       await updateDoc(gameRef, {
         [`players.${user.uid}.hasAnswered`]: true,
         [`players.${user.uid}.lastAnswerCorrect`]: isCorrect,
+        [`players.${user.uid}.responseTime`]: responseTime,
       });
 
       setHasAnswered(true);
@@ -133,6 +146,7 @@ function GamePage() {
       const updates: Record<string, any> = {
         currentQuestionIndex: nextQuestionIndex,
         status: isLastQuestion ? "finished" : "playing",
+        currentQuestionStartedAt: Date.now(),
       };
 
       Object.keys(gameData.players).forEach((playerId) => {
@@ -148,6 +162,24 @@ function GamePage() {
     catch (error) {
       console.error("Error moving to next question:", error);
       setError("Error moving to next question");
+    }
+  };
+
+  const handleTimeUp = async () => {
+    if (!gameCode || !user || !gameData || !currentQuestion || hasAnswered)
+      return;
+
+    try {
+      const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
+      await updateDoc(gameRef, {
+        [`players.${user.uid}.hasAnswered`]: true,
+        [`players.${user.uid}.lastAnswerCorrect`]: false,
+      });
+      setHasAnswered(true);
+    }
+    catch (error) {
+      console.error("Error handling time up:", error);
+      setError("Error handling time up");
     }
   };
 
@@ -202,12 +234,20 @@ function GamePage() {
         <CardContent className="space-y-8">
           <div className="text-center">
             <p className="text-2xl font-medium mb-2">{currentQuestion.text}</p>
-            <p className="text-sm text-muted-foreground">
-              Time limit:
-              {" "}
-              {currentQuestion.timeLimit}
-              s
-            </p>
+            <div style={{ display: "none" }}>
+              {JSON.stringify({
+                hasAnswered,
+                currentQuestionStartedAt: gameData.currentQuestionStartedAt,
+                timeLimit: currentQuestion.timeLimit,
+              })}
+            </div>
+            {!hasAnswered && gameData.currentQuestionStartedAt && (
+              <QuestionTimer
+                timeLimit={currentQuestion.timeLimit}
+                startedAt={gameData.currentQuestionStartedAt}
+                onTimeUp={handleTimeUp}
+              />
+            )}
           </div>
 
           {!hasAnswered
