@@ -11,7 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { db } from "@/lib/firebase";
-import { gameConverter, joinGame } from "@/lib/firebase/firestore";
+import {
+  gameConverter,
+  joinGame,
+  updateUserStats,
+} from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
 
 function GamePage() {
@@ -83,8 +87,8 @@ function GamePage() {
 
         setLoading(false);
 
-        // If game is finished, navigate to results
-        if (data.status === "finished") {
+        // If game is finished, only redirect non-host players to results
+        if (data.status === "finished" && !data.players[user.uid]?.isHost) {
           navigate(`/results/${gameCode}`);
         }
       },
@@ -200,14 +204,35 @@ function GamePage() {
         currentQuestionStartedAt: Date.now(),
       };
 
-      Object.keys(gameData.players).forEach((playerId) => {
+      // Update final scores for all players
+      Object.entries(gameData.players).forEach(([playerId, player]) => {
+        if (player.hasAnswered) {
+          // Add the last question's score to the total score
+          updates[`players.${playerId}.score`] =
+            (player.score || 0) + (player.lastQuestionScore || 0);
+        }
         updates[`players.${playerId}.hasAnswered`] = false;
       });
 
       await updateDoc(gameRef, updates);
 
       if (isLastQuestion) {
-        navigate(`/results/${gameCode}`);
+        // Update stats for all players when game finishes
+        const playerPromises = Object.entries(gameData.players).map(
+          ([playerId, player]) => {
+            const finalScore = player.score + (player.lastQuestionScore || 0);
+            return updateUserStats(playerId, player.name, finalScore);
+          }
+        );
+        await Promise.all(playerPromises);
+
+        // Only redirect non-host players to results
+        const isHost = gameData.players[user.uid]?.isHost;
+        if (!isHost) {
+          // Small delay to ensure Firestore updates are processed
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          navigate(`/results/${gameCode}`);
+        }
       }
     } catch (error) {
       console.error("Error moving to next question:", error);

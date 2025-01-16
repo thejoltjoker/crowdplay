@@ -11,18 +11,21 @@ import { db } from "@/lib/firebase";
 import { gameConverter } from "@/lib/firebase/firestore";
 
 function ResultsPage() {
-  const { id: gameCode } = useParams();
+  const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [gameData, setGameData] = useState<Game | null>(null);
 
   useEffect(() => {
-    if (!gameCode)
+    if (!gameId) {
+      setError("No game code provided");
+      setLoading(false);
       return;
+    }
 
     const unsubscribe = onSnapshot(
-      doc(db, "games", gameCode).withConverter(gameConverter),
+      doc(db, "games", gameId).withConverter(gameConverter),
       (doc) => {
         if (!doc.exists()) {
           setError("Game not found");
@@ -31,6 +34,12 @@ function ResultsPage() {
         }
 
         const data = doc.data();
+        if (data.status !== "finished") {
+          setError("Game is not finished");
+          setLoading(false);
+          return;
+        }
+
         setGameData(data);
         setLoading(false);
       },
@@ -38,14 +47,14 @@ function ResultsPage() {
         console.error("Error fetching game:", error);
         setError("Error fetching game data");
         setLoading(false);
-      },
+      }
     );
 
     return () => unsubscribe();
-  }, [gameCode]);
+  }, [gameId]);
 
   const handlePlayAgain = () => {
-    navigate(`/`);
+    navigate("/");
   };
 
   if (loading) {
@@ -73,9 +82,9 @@ function ResultsPage() {
   }
 
   // Sort players by score in descending order
-  const sortedPlayers = Object.values(gameData.players).sort(
-    (a, b) => b.score - a.score,
-  );
+  const sortedPlayers = Object.values(gameData.players)
+    .filter((p) => !p.isHost) // Exclude host from results
+    .sort((a, b) => b.score - a.score);
 
   return (
     <div className="container mx-auto py-8">
@@ -86,16 +95,12 @@ function ResultsPage() {
         <CardContent className="space-y-8">
           <div className="text-center text-muted-foreground">
             <p>
-              Game Code:
-              {" "}
+              Game Code:{" "}
               <span className="font-mono font-bold text-foreground">
-                {gameCode}
+                {gameId}
               </span>
             </p>
-            <p>
-              Total Questions:
-              {gameData.questions.length}
-            </p>
+            <p>Total Questions: {gameData.questions.length}</p>
           </div>
 
           <div className="space-y-4">
@@ -106,26 +111,12 @@ function ResultsPage() {
               >
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-semibold min-w-[2rem]">
-                    {index + 1}
-                    .
+                    {index + 1}.
                   </span>
                   <div>
-                    <p className="font-medium">
-                      {player.name}
-                      {player.isHost && (
-                        <span className="ml-2 text-xs bg-secondary px-2 py-1 rounded">
-                          Host
-                        </span>
-                      )}
-                    </p>
+                    <p className="font-medium">{player.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      Score:
-                      {" "}
-                      {player.score}
-                      {" "}
-                      /
-                      {" "}
-                      {gameData.questions.length}
+                      Score: {player.score} points
                     </p>
                   </div>
                 </div>
