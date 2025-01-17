@@ -1,6 +1,9 @@
-import { LogOut, Pencil, Trophy } from "lucide-react";
-import { useState, useEffect } from "react";
 import { Temporal } from "@js-temporal/polyfill";
+import { doc, getDoc } from "firebase/firestore";
+import { LogOut, Pencil, Trophy } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import type { UserStats } from "@/lib/schemas/user-stats";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,17 +14,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { userStatsConverter } from "@/lib/firebase/firestore";
-import type { UserStats } from "@/lib/schemas/user-stats";
-import { useAuth } from "@/providers/auth";
-import { signInWithGoogleAndTransferStats } from "@/providers/auth";
 import {
-  getLocalStats,
   clearLocalStats,
+  getLocalStats,
   saveLocalStats,
 } from "@/lib/helpers/local-stats";
+import { signInWithGoogleAndTransferStats, useAuth } from "@/providers/auth";
 
 export function ProfilePage() {
   const { user, username, setUsername, signOut, isAnonymous } = useAuth();
@@ -38,14 +38,12 @@ export function ProfilePage() {
       setStatsError(null);
 
       if (!user) {
-        console.log("No user");
         return;
       }
 
       if (isAnonymous) {
         // For anonymous users, get stats from local storage
         const localStats = getLocalStats();
-        console.log("Anonymous user, local stats:", localStats);
 
         if (localStats) {
           // Update the userId and displayName in case they changed
@@ -54,12 +52,12 @@ export function ProfilePage() {
             userId: user.uid,
             displayName: username || "Anonymous",
           };
-          console.log("Setting updated local stats:", updatedStats);
+
           setStats(updatedStats);
           // Save the updated stats back to local storage
           saveLocalStats(updatedStats);
-        } else {
-          console.log("No local stats found for anonymous user, initializing");
+        }
+        else {
           const initialStats: UserStats = {
             userId: user.uid,
             displayName: username || "Anonymous",
@@ -76,19 +74,17 @@ export function ProfilePage() {
 
       setIsLoadingStats(true);
       try {
-        console.log("Fetching stats for user:", user.uid);
         const statsRef = doc(db, "userStats", user.uid).withConverter(
-          userStatsConverter
+          userStatsConverter,
         );
         const statsDoc = await getDoc(statsRef);
 
         if (statsDoc.exists()) {
-          console.log("Stats found:", statsDoc.data());
           setStats(statsDoc.data());
           // Clear local stats after successful transfer
           clearLocalStats();
-        } else {
-          console.log("No stats found for user");
+        }
+        else {
           // Initialize stats for new users
           setStats({
             userId: user.uid,
@@ -99,10 +95,12 @@ export function ProfilePage() {
             lastGamePlayed: undefined,
           });
         }
-      } catch (error) {
+      }
+      catch (error) {
         console.error("Error fetching user stats:", error);
         setStatsError("Failed to load stats. Please try again later.");
-      } finally {
+      }
+      finally {
         setIsLoadingStats(false);
       }
     };
@@ -120,7 +118,8 @@ export function ProfilePage() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogleAndTransferStats();
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error signing in with Google:", error);
     }
   };
@@ -150,29 +149,31 @@ export function ProfilePage() {
                 <Pencil className="h-4 w-4" />
               </Button>
             </div>
-            {isEditingName ? (
-              <div className="flex space-x-2">
-                <Input
-                  value={tempUsername}
-                  onChange={(e) => setTempUsername(e.target.value)}
-                  placeholder="Enter a username"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleUsernameSubmit();
-                    }
-                  }}
-                  autoFocus
-                />
-                <Button
-                  onClick={handleUsernameSubmit}
-                  disabled={!tempUsername || tempUsername === username}
-                >
-                  Save
-                </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">{username}</p>
-            )}
+            {isEditingName
+              ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      value={tempUsername}
+                      onChange={e => setTempUsername(e.target.value)}
+                      placeholder="Enter a username"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleUsernameSubmit();
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      onClick={handleUsernameSubmit}
+                      disabled={!tempUsername || tempUsername === username}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                )
+              : (
+                  <p className="text-sm text-muted-foreground">{username}</p>
+                )}
           </div>
 
           <div className="space-y-1">
@@ -190,16 +191,18 @@ export function ProfilePage() {
           )}
 
           <div className="pt-4">
-            {isAnonymous ? (
-              <Button className="w-full" onClick={handleGoogleSignIn}>
-                Sign in with Google
-              </Button>
-            ) : (
-              <Button variant="outline" className="w-full" onClick={signOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </Button>
-            )}
+            {isAnonymous
+              ? (
+                  <Button className="w-full" onClick={handleGoogleSignIn}>
+                    Sign in with Google
+                  </Button>
+                )
+              : (
+                  <Button variant="outline" className="w-full" onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                )}
           </div>
         </CardContent>
       </Card>
@@ -222,48 +225,54 @@ export function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoadingStats ? (
-            <div className="text-sm text-muted-foreground">
-              Loading stats...
-            </div>
-          ) : statsError ? (
-            <div className="text-sm text-destructive">{statsError}</div>
-          ) : stats ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Games Played</p>
-                <p className="text-2xl font-bold">{stats.gamesPlayed}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Total Score</p>
-                <p className="text-2xl font-bold">{stats.totalScore}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Average Score</p>
-                <p className="text-2xl font-bold">
-                  {stats.averageScore.toFixed(1)}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Last Game</p>
-                <p className="text-2xl font-bold">
-                  {stats.lastGamePlayed
-                    ? Temporal.Instant.fromEpochMilliseconds(
-                        stats.lastGamePlayed
-                      )
-                        .toZonedDateTimeISO(Temporal.Now.timeZoneId())
-                        .toPlainDate()
-                        .toString()
-                    : "Never"}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              No game statistics available yet. Play some games to see your
-              stats!
-            </div>
-          )}
+          {isLoadingStats
+            ? (
+                <div className="text-sm text-muted-foreground">
+                  Loading stats...
+                </div>
+              )
+            : statsError
+              ? (
+                  <div className="text-sm text-destructive">{statsError}</div>
+                )
+              : stats
+                ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Games Played</p>
+                        <p className="text-2xl font-bold">{stats.gamesPlayed}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Total Score</p>
+                        <p className="text-2xl font-bold">{stats.totalScore}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Average Score</p>
+                        <p className="text-2xl font-bold">
+                          {stats.averageScore.toFixed(1)}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Last Game</p>
+                        <p className="text-2xl font-bold">
+                          {stats.lastGamePlayed
+                            ? Temporal.Instant.fromEpochMilliseconds(
+                                stats.lastGamePlayed,
+                              )
+                                .toZonedDateTimeISO(Temporal.Now.timeZoneId())
+                                .toPlainDate()
+                                .toString()
+                            : "Never"}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                : (
+                    <div className="text-sm text-muted-foreground">
+                      No game statistics available yet. Play some games to see your
+                      stats!
+                    </div>
+                  )}
         </CardContent>
       </Card>
     </div>

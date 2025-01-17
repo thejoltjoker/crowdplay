@@ -51,7 +51,7 @@ const Hero: React.FC = () => {
                         opacity={1 - Math.sin(angle)}
                       />
                     );
-                  }
+                  },
                 )}
               </svg>
             </div>

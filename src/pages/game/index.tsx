@@ -44,8 +44,8 @@ function GamePage() {
     }
 
     // For anonymous users, use "Anonymous" as username if none is set
-    const effectiveUsername =
-      username || (isAnonymous ? "Anonymous" : user.displayName || "Unknown");
+    const effectiveUsername
+      = username || (isAnonymous ? "Anonymous" : user.displayName || "Unknown");
 
     const unsubscribe = onSnapshot(
       doc(db, "games", gameCode).withConverter(gameConverter),
@@ -71,7 +71,8 @@ function GamePage() {
             await joinGame(gameCode, user.uid, effectiveUsername);
             // Don't set game data here, it will be updated by the next snapshot
             return;
-          } catch (error) {
+          }
+          catch (error) {
             console.error("Error joining game:", error);
             setError("Error joining game");
             setLoading(false);
@@ -107,7 +108,7 @@ function GamePage() {
         setError("Error fetching game data");
         setLoading(false);
         setIsJoining(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -123,12 +124,12 @@ function GamePage() {
 
   const handleAnswer = async (optionIndex: number) => {
     if (
-      !gameCode ||
-      !user ||
-      !gameData ||
-      !currentQuestion ||
-      hasAnswered ||
-      !gameData.currentQuestionStartedAt
+      !gameCode
+      || !user
+      || !gameData
+      || !currentQuestion
+      || hasAnswered
+      || !gameData.currentQuestionStartedAt
     ) {
       return;
     }
@@ -148,10 +149,11 @@ function GamePage() {
           const timeElapsedSeconds = responseTime / 1000;
           const timeRatio = Math.max(
             0,
-            1 - timeElapsedSeconds / currentQuestion.timeLimit
+            1 - timeElapsedSeconds / currentQuestion.timeLimit,
           );
           score = Math.round(100 * timeRatio);
-        } else {
+        }
+        else {
           // For untimed questions, score is 100 if correct
           score = 100;
         }
@@ -170,15 +172,11 @@ function GamePage() {
 
       // Update local stats for anonymous users after each answer
       if (isAnonymous) {
-        console.log("Updating local stats after answer:", {
-          score,
-          isCorrect,
-          isAnonymous,
-        });
         // Pass false for isGameFinished since this is just an answer
         updateUserStats(user.uid, username || "Anonymous", score, true, false);
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error submitting answer:", error);
       setError("Error submitting answer");
     }
@@ -186,12 +184,12 @@ function GamePage() {
 
   const handleTimeUp = async () => {
     if (
-      !gameCode ||
-      !user ||
-      !gameData ||
-      !currentQuestion ||
-      hasAnswered ||
-      !gameData.currentQuestionStartedAt
+      !gameCode
+      || !user
+      || !gameData
+      || !currentQuestion
+      || hasAnswered
+      || !gameData.currentQuestionStartedAt
     ) {
       return;
     }
@@ -208,20 +206,21 @@ function GamePage() {
 
       // Update local stats for anonymous users with zero score when time is up
       if (isAnonymous) {
-        console.log("Updating local stats after time up (zero score)");
         // Pass false for isGameFinished since this is just a timeout
         updateUserStats(user.uid, username || "Anonymous", 0, true, false);
       }
 
       setHasAnswered(true);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error handling time up:", error);
       setError("Error handling time up");
     }
   };
 
   const handleNextQuestion = async () => {
-    if (!gameCode || !user || !gameData || !currentQuestion) return;
+    if (!gameCode || !user || !gameData || !currentQuestion)
+      return;
 
     try {
       const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
@@ -237,13 +236,6 @@ function GamePage() {
           ? player.lastQuestionScore || 0
           : 0;
         const totalScore = currentScore + lastQuestionScore;
-        console.log("Calculating score for player:", {
-          playerId,
-          currentScore,
-          lastQuestionScore,
-          totalScore,
-          hasAnswered: player.hasAnswered,
-        });
         finalScores.set(playerId, totalScore);
       });
 
@@ -255,54 +247,31 @@ function GamePage() {
       };
 
       // Update scores in the game document
-      Object.entries(gameData.players).forEach(([playerId, player]) => {
+      Object.entries(gameData.players).forEach(([playerId]) => {
         const finalScore = finalScores.get(playerId) || 0;
         updates[`players.${playerId}.score`] = finalScore;
         updates[`players.${playerId}.hasAnswered`] = false;
       });
 
-      console.log("Updating game with scores:", updates);
       await updateDoc(gameRef, updates);
 
       if (isLastQuestion) {
-        console.log(
-          "Game finished, updating stats. Current user anonymous:",
-          isAnonymous
-        );
-        console.log(
-          "Final scores for all players:",
-          Object.fromEntries(finalScores)
-        );
-
         // Update stats for all players when game finishes
         const playerPromises = Object.entries(gameData.players).map(
           ([playerId, player]) => {
             const finalScore = finalScores.get(playerId) || 0;
             // Pass isAnonymous flag based on whether the player is the current user
-            const isPlayerAnonymous =
-              playerId === user.uid ? isAnonymous : false;
-            console.log(
-              "Updating stats for player:",
-              playerId,
-              "score:",
-              finalScore,
-              "anonymous:",
-              isPlayerAnonymous,
-              "name:",
-              player.name,
-              "hasAnswered:",
-              player.hasAnswered,
-              "lastQuestionScore:",
-              player.lastQuestionScore
-            );
+            const isPlayerAnonymous
+              = playerId === user.uid ? isAnonymous : false;
+
             return updateUserStats(
               playerId,
               player.name,
               finalScore,
               isPlayerAnonymous,
-              isLastQuestion // Pass isLastQuestion as isGameFinished
+              isLastQuestion, // Pass isLastQuestion as isGameFinished
             );
-          }
+          },
         );
         await Promise.all(playerPromises);
 
@@ -310,11 +279,12 @@ function GamePage() {
         const isHost = gameData.players[user.uid]?.isHost;
         if (!isHost) {
           // Small delay to ensure Firestore updates are processed
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 500));
           navigate(`/results/${gameCode}`);
         }
       }
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error moving to next question:", error);
       setError("Error moving to next question");
     }
@@ -344,25 +314,27 @@ function GamePage() {
     );
   }
 
-  const isHost =
-    Object.values(gameData.players).find((p) => p.isHost)?.id === user?.uid;
+  const isHost
+    = Object.values(gameData.players).find(p => p.isHost)?.id === user?.uid;
   const activePlayers = Object.values(gameData.players).filter(
-    (p) => !p.isHost
+    p => !p.isHost,
   );
-  const answeredCount = activePlayers.filter((p) => p.hasAnswered).length;
+  const answeredCount = activePlayers.filter(p => p.hasAnswered).length;
   const totalPlayers = activePlayers.length;
-  const answeredPercentage =
-    totalPlayers > 0 ? (answeredCount / totalPlayers) * 100 : 0;
-
-  const playerAnswer = user ? gameData.players[user.uid] : null;
-  const isAnswerCorrect = playerAnswer?.lastAnswerCorrect;
+  const answeredPercentage
+    = totalPlayers > 0 ? (answeredCount / totalPlayers) * 100 : 0;
 
   return (
     <div className=" mx-auto p-4">
       <Card>
         <CardHeader>
           <CardTitle>
-            Question {gameData.currentQuestionIndex + 1} of{" "}
+            Question
+            {" "}
+            {gameData.currentQuestionIndex + 1}
+            {" "}
+            of
+            {" "}
             {gameData.questions.length}
           </CardTitle>
         </CardHeader>
@@ -406,11 +378,18 @@ function GamePage() {
               <div className="flex items-center gap-1">
                 <Users className="h-4 w-4" />
                 <span>
-                  {answeredCount} of
-                  {totalPlayers} answered
+                  {answeredCount}
+                  {" "}
+                  of
+                  {totalPlayers}
+                  {" "}
+                  answered
                 </span>
               </div>
-              <span>{Math.round(answeredPercentage)}%</span>
+              <span>
+                {Math.round(answeredPercentage)}
+                %
+              </span>
             </div>
             <Progress value={answeredPercentage} />
           </div>

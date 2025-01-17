@@ -33,7 +33,6 @@ function SortableQuestionItem({
   index,
   currentQuestionIndex,
   onRemoveQuestion,
-  isDisabled,
   isHost,
 }: {
   question: Question;
@@ -114,7 +113,6 @@ function SortableQuestionItem({
 export function QuestionsQueue({
   questions,
   onRemoveQuestion,
-  onMoveQuestion,
   onReorder,
   currentQuestionIndex = -1,
   isHost = false,

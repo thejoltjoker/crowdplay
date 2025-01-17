@@ -44,14 +44,7 @@ export function LoginForm() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const result = await signInWithEmailAndPassword(
-        auth,
-        values.email,
-        values.password,
-      );
-
-      const user = result?.user;
-      console.log("Successfully logged in:", user);
+      await signInWithEmailAndPassword(auth, values.email, values.password);
     }
     catch (error) {
       console.error("Login error:", error);

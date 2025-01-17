@@ -44,14 +44,8 @@ export function RegisterForm() {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        values.email,
-        values.password,
-      );
+      await createUserWithEmailAndPassword(auth, values.email, values.password);
 
-      const user = userCredential?.user;
-      console.log("Successfully registered:", user);
       navigate("/login");
     }
     catch (error) {

@@ -31,24 +31,24 @@
   }
 
   .dark {
-    --background: 169 89% 4%;
+    --background: 169 89% 3%;
     --foreground: 0 0% 100%;
     --muted: 215 27.91% 16.86%;
     --muted-foreground: 217.89 10.61% 64.9%;
-    --popover: 169 89% 4%;
+    --popover: 169 89% 3%;
     --popover-foreground: 0 0% 100%;
-    --card: 169 89% 4%;
+    --card: 169 89% 3%;
     --card-foreground: 0 0% 100%;
     --border: 157 95% 57%;
     --input: 157 95% 57%;
     --primary: 157 95% 57%;
-    --primary-foreground: 169 89% 4%;
+    --primary-foreground: 169 89% 3%;
     --secondary: 215 27.91% 16.86%;
     --secondary-foreground: 220 13.04% 90.98%;
     --accent: 157 95% 57%;
     --accent-foreground: 157 95% 7%;
     --destructive: 0 90.6% 70.78%;
-    --destructive-foreground: 169 89% 4%;
+    --destructive-foreground: 169 89% 3%;
     --ring: 157 95% 57%;
     --chart-1: 157 95% 57%;
     --chart-2: 215 27.91% 16.86%;
@@ -59,6 +59,29 @@
 }
 
 @layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    text-shadow:
+      0 0 2px rgba(41, 251, 170, 0.5),
+      0 0 8px rgba(41, 251, 170, 0.2),
+      0 0 16px rgba(91, 251, 220, 0.2);
+  }
+
+  nav {
+    box-shadow:
+      0 0 2px rgba(41, 251, 170, 0.4),
+      0 0 8px rgba(41, 251, 170, 0.2),
+      0 0 16px rgba(91, 251, 220, 0.1),
+      0 0 64px rgba(91, 251, 220, 0.1);
+    text-shadow:
+      0 0 2px rgba(41, 251, 170, 0.2),
+      0 0 8px rgba(41, 251, 170, 0.1),
+      0 0 16px rgba(91, 251, 220, 0.1);
+  }
   * {
     @apply border-border uppercase;
   }
@@ -74,18 +97,10 @@
     --font-family: "Chakra Petch", sans-serif;
     text-transform: uppercase;
   }
-
-  body {
-    @apply bg-crt;
-  }
 }
 
 @layer utilities {
   .bg-crt {
-    background: repeating-linear-gradient(
-      hsl(169, 89%, 4%) 0px,
-      hsl(169, 89%, 5%) 3px,
-      hsl(169, 89%, 4%) 6px
-    );
+    background: repeating-linear-gradient(hsl(169, 89%, 4%) 0px, hsl(169, 89%, 5%) 3px, hsl(169, 89%, 4%) 6px);
   }
 }

@@ -1,24 +1,27 @@
 import type { QueryDocumentSnapshot } from "firebase/firestore";
+
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  query,
   setDoc,
   updateDoc,
-  collection,
-  query,
   where,
-  getDocs,
 } from "firebase/firestore";
 
-import { db } from "@/lib/firebase";
 import type { User } from "@/lib/schemas/user";
+
+import { db } from "@/lib/firebase";
 import { userSchema } from "@/lib/schemas/user";
 
 export const userConverter = {
   toFirestore: (data: User) => {
     try {
       return userSchema.parse(data);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Invalid user data:", error);
       throw error;
     }
@@ -29,7 +32,7 @@ export const userConverter = {
 };
 
 export async function createUser(
-  userData: Omit<User, "createdAt" | "updatedAt">
+  userData: Omit<User, "createdAt" | "updatedAt">,
 ): Promise<User> {
   try {
     const now = Date.now();
@@ -43,7 +46,8 @@ export async function createUser(
 
     await setDoc(userRef, newUser);
     return newUser;
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error creating user:", error);
     throw error;
   }
@@ -59,7 +63,8 @@ export async function getUser(userId: string): Promise<User | null> {
     }
 
     return userDoc.data();
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error getting user:", error);
     throw error;
   }
@@ -67,7 +72,7 @@ export async function getUser(userId: string): Promise<User | null> {
 
 export async function updateUser(
   userId: string,
-  updates: Partial<Omit<User, "id" | "createdAt">>
+  updates: Partial<Omit<User, "id" | "createdAt">>,
 ): Promise<void> {
   try {
     const userRef = doc(db, "users", userId).withConverter(userConverter);
@@ -75,7 +80,8 @@ export async function updateUser(
       ...updates,
       updatedAt: Date.now(),
     });
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error updating user:", error);
     throw error;
   }
@@ -84,7 +90,7 @@ export async function updateUser(
 export async function updateUserStats(
   userId: string,
   gameScore: number,
-  won: boolean
+  won: boolean,
 ): Promise<void> {
   try {
     const user = await getUser(userId);
@@ -107,7 +113,8 @@ export async function updateUserStats(
     newStats.winRate = (newStats.gamesWon / newStats.gamesPlayed) * 100;
 
     await updateUser(userId, { stats: newStats });
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error updating user stats:", error);
     throw error;
   }
@@ -116,12 +123,13 @@ export async function updateUserStats(
 export async function getUsersByRole(role: User["role"]): Promise<User[]> {
   try {
     const usersCollection = collection(db, "users").withConverter(
-      userConverter
+      userConverter,
     );
     const q = query(usersCollection, where("role", "==", role));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => doc.data());
-  } catch (error) {
+    return querySnapshot.docs.map(doc => doc.data());
+  }
+  catch (error) {
     console.error("Error getting users by role:", error);
     throw error;
   }

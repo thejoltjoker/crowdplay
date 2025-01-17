@@ -1,16 +1,16 @@
 import type { QueryDocumentSnapshot } from "firebase/firestore";
 
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
   setDoc,
   updateDoc,
-  collection,
-  query,
   where,
-  orderBy,
-  limit,
-  getDocs,
 } from "firebase/firestore";
 import { nanoid } from "nanoid";
 
@@ -28,7 +28,8 @@ export const gameConverter = {
   toFirestore: (data: Game) => {
     try {
       return gameSchema.parse(data);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Invalid game data:", error);
       throw error;
     }
@@ -42,7 +43,8 @@ export const questionConverter = {
   toFirestore: (data: Question) => {
     try {
       return questionSchema.parse(data);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Invalid question data:", error);
       throw error;
     }
@@ -56,7 +58,8 @@ export const userStatsConverter = {
   toFirestore: (data: UserStats) => {
     try {
       return userStatsSchema.parse(data);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Invalid user stats data:", error);
       throw error;
     }
@@ -95,19 +98,19 @@ const defaultQuestions: Omit<Question, "id">[] = [
 
 export async function fetchQuestions(): Promise<Question[]> {
   // For testing, return default questions with generated IDs
-  return defaultQuestions.map((q) => ({
+  return defaultQuestions.map(q => ({
     ...q,
     id: nanoid(),
   }));
 }
 
 export async function addQuestion(
-  question: Omit<Question, "id">
+  question: Omit<Question, "id">,
 ): Promise<Question> {
   try {
     const questionId = nanoid();
     const questionRef = doc(db, "questions", questionId).withConverter(
-      questionConverter
+      questionConverter,
     );
     const newQuestion: Question = {
       ...question,
@@ -115,7 +118,8 @@ export async function addQuestion(
     };
     await setDoc(questionRef, newQuestion);
     return newQuestion;
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error adding question:", error);
     throw error;
   }
@@ -128,7 +132,7 @@ function generateGameCode() {
 export async function createGame(
   hostId: string,
   hostName: string,
-  customGameCode?: string
+  customGameCode?: string,
 ): Promise<string> {
   try {
     const gameCode = customGameCode || generateGameCode();
@@ -142,7 +146,7 @@ export async function createGame(
     }
 
     // Add default questions with generated IDs
-    const questions = defaultQuestions.map((q) => ({
+    const questions = defaultQuestions.map(q => ({
       ...q,
       id: nanoid(),
     }));
@@ -169,7 +173,8 @@ export async function createGame(
 
     await setDoc(gameRef, game);
     return gameCode;
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error creating game:", error);
     throw error;
   }
@@ -178,7 +183,7 @@ export async function createGame(
 export async function joinGame(
   gameCode: string,
   playerId: string,
-  playerName: string
+  playerName: string,
 ): Promise<void> {
   try {
     const gameRef = doc(db, "games", gameCode).withConverter(gameConverter);
@@ -207,7 +212,8 @@ export async function joinGame(
         hasAnswered: false,
       },
     });
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error joining game:", error);
     throw error;
   }
@@ -218,36 +224,27 @@ export async function updateUserStats(
   displayName: string,
   gameScore: number,
   isAnonymous: boolean = false,
-  isGameFinished: boolean = false
+  isGameFinished: boolean = false,
 ): Promise<void> {
   try {
-    console.log("updateUserStats called with:", {
-      userId,
-      displayName,
-      gameScore,
-      isAnonymous,
-      isGameFinished,
-    });
-
     // If anonymous, only update local storage
     if (isAnonymous) {
-      console.log("Updating local stats for anonymous user");
       updateLocalStats(userId, displayName, gameScore, isGameFinished);
       return;
     }
 
     const userStatsRef = doc(db, "userStats", userId).withConverter(
-      userStatsConverter
+      userStatsConverter,
     );
     const userStatsDoc = await getDoc(userStatsRef);
     const localStats = getLocalStats();
 
     if (userStatsDoc.exists()) {
       const currentStats = userStatsDoc.data();
-      const newTotalScore =
-        currentStats.totalScore + gameScore + (localStats?.totalScore || 0);
-      const newGamesPlayed =
-        currentStats.gamesPlayed + 1 + (localStats?.gamesPlayed || 0);
+      const newTotalScore
+        = currentStats.totalScore + gameScore + (localStats?.totalScore || 0);
+      const newGamesPlayed
+        = currentStats.gamesPlayed + 1 + (localStats?.gamesPlayed || 0);
 
       await updateDoc(userStatsRef, {
         totalScore: newTotalScore,
@@ -256,7 +253,8 @@ export async function updateUserStats(
         lastGamePlayed: Date.now(),
         displayName, // Update display name in case it changed
       });
-    } else {
+    }
+    else {
       // For new users, include local stats if they exist
       const totalScore = gameScore + (localStats?.totalScore || 0);
       const gamesPlayed = 1 + (localStats?.gamesPlayed || 0);
@@ -270,7 +268,8 @@ export async function updateUserStats(
         lastGamePlayed: Date.now(),
       });
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error updating user stats:", error);
     throw error;
   }
@@ -279,18 +278,19 @@ export async function updateUserStats(
 export async function getActiveGames(): Promise<Game[]> {
   try {
     const gamesCollection = collection(db, "games").withConverter(
-      gameConverter
+      gameConverter,
     );
     const q = query(
       gamesCollection,
       where("status", "in", ["waiting", "playing"]),
       orderBy("currentQuestionIndex", "asc"),
-      limit(10)
+      limit(10),
     );
 
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((doc) => doc.data());
-  } catch (error) {
+    return querySnapshot.docs.map(doc => doc.data());
+  }
+  catch (error) {
     console.error("Error getting active games:", error);
     throw error;
   }

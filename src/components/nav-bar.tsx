@@ -33,7 +33,7 @@ export function NavBar() {
             <div className="flex items-center space-x-8 justify-between  w-full">
               <div className="text-xl font-bold">CrowdPlay</div>
               <div className="flex items-center space-x-4">
-                {navItems.map((item) => (
+                {navItems.map(item => (
                   <Link
                     key={item.href}
                     to={item.href}
@@ -41,7 +41,7 @@ export function NavBar() {
                       "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
                       location.pathname === item.href
                         ? "text-primary"
-                        : "text-muted-foreground"
+                        : "text-muted-foreground",
                     )}
                   >
                     <item.icon className="h-4 w-4" />
@@ -58,7 +58,7 @@ export function NavBar() {
       <nav className="fixed bottom-0 left-0 right-0 border-t bg-background md:hidden z-50">
         <div className="mx-auto px-4">
           <div className="flex h-16 items-center justify-around">
-            {navItems.map((item) => (
+            {navItems.map(item => (
               <Link
                 key={item.href}
                 to={item.href}
@@ -66,7 +66,7 @@ export function NavBar() {
                   "flex flex-col items-center space-y-1 text-xs font-medium transition-colors hover:text-primary",
                   location.pathname === item.href
                     ? "text-primary"
-                    : "text-muted-foreground"
+                    : "text-muted-foreground",
                 )}
               >
                 <item.icon className="h-5 w-5" />

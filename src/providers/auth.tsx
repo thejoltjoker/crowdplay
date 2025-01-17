@@ -1,23 +1,22 @@
 import {
+  signOut as firebaseSignOut,
   signInAnonymously,
   signInWithPopup,
-  signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 
 import { auth, googleProvider } from "@/lib/firebase";
-import { getLocalStats, clearLocalStats } from "@/lib/helpers/local-stats";
 import { updateUserStats } from "@/lib/firebase/firestore";
+import { clearLocalStats, getLocalStats } from "@/lib/helpers/local-stats";
 
 const USERNAME_KEY = "crowdplay_username";
 
 // Add function to handle Google sign in and stats transfer
-export const signInWithGoogleAndTransferStats = async () => {
+export async function signInWithGoogleAndTransferStats() {
   try {
     // Get local stats before signing in
     const localStats = getLocalStats();
-    console.log("Local stats before Google sign in:", localStats);
 
     // Sign in with Google
     const result = await signInWithPopup(auth, googleProvider);
@@ -25,24 +24,24 @@ export const signInWithGoogleAndTransferStats = async () => {
 
     // If we had local stats, transfer them to the Google account
     if (localStats && localStats.totalScore > 0) {
-      console.log("Transferring local stats to Google account");
       await updateUserStats(
         user.uid,
         user.displayName || "Unknown",
         localStats.totalScore,
         false, // Not anonymous anymore
-        true // Treat as a finished game to update games played
+        true, // Treat as a finished game to update games played
       );
       // Clear local stats after successful transfer
       clearLocalStats();
     }
 
     return user;
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error signing in with Google:", error);
     throw error;
   }
-};
+}
 
 export interface AuthContextType {
   user: User | null;
@@ -69,10 +68,15 @@ export interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [username, setUsernameState] = useState<string | null>(() => {
+  const [username, setUsername] = useState<string | null>(() => {
     // Initialize from localStorage
     return localStorage.getItem(USERNAME_KEY);
   });
+
+  const handleSetUsername = (name: string) => {
+    setUsername(name);
+    localStorage.setItem(USERNAME_KEY, name);
+  };
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -80,14 +84,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(user);
         // If user signs in with Google, use their display name as username
         if (!user.isAnonymous && user.displayName && !username) {
-          setUsername(user.displayName);
+          handleSetUsername(user.displayName);
         }
         setLoading(false);
-      } else {
+      }
+      else {
         // Add anonymous authentication
         try {
           await signInAnonymously(auth);
-        } catch (error) {
+        }
+        catch (error) {
           console.error("Failed to sign in anonymously:", error);
         }
       }
@@ -96,17 +102,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, [username]);
 
-  const setUsername = (name: string) => {
-    setUsernameState(name);
-    localStorage.setItem(USERNAME_KEY, name);
-  };
-
   const signOut = async () => {
     try {
       await firebaseSignOut(auth);
       localStorage.removeItem(USERNAME_KEY);
-      setUsernameState(null);
-    } catch (error) {
+      setUsername(null);
+    }
+    catch (error) {
       console.error("Error signing out:", error);
       throw error;
     }
@@ -127,7 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         user,
         loading,
         username,
-        setUsername,
+        setUsername: handleSetUsername,
         signOut,
         isAnonymous: user?.isAnonymous ?? true,
       }}

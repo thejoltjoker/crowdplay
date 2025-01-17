@@ -42,8 +42,8 @@ function createQuestionSchema(optionCount: number) {
     correctAnswer: z
       .string()
       .refine(
-        val => val >= "0" && val < optionCount.toString(),
-        "Please select a valid option",
+        (val) => val >= "0" && val < optionCount.toString(),
+        "Please select a valid option"
       ),
     hasTimeLimit: z.boolean().default(false),
     timeLimit: z.number().nullable().default(null),
@@ -174,7 +174,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                         min={5}
                         max={120}
                         {...field}
-                        onChange={e => field.onChange(Number(e.target.value))}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
                         value={field.value || 30}
                       />
                     </FormControl>
@@ -205,6 +205,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                             <Input
                               placeholder={`Enter option ${index + 1}`}
                               {...field}
+                              value={field.value}
                             />
                           </FormControl>
                         </div>
@@ -260,9 +261,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                             <RadioGroupItem value={index.toString()} />
                           </FormControl>
                           <FormLabel className="font-normal">
-                            Option
-                            {" "}
-                            {index + 1}
+                            Option {index + 1}
                           </FormLabel>
                         </FormItem>
                       ))}
