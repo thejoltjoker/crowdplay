@@ -6,6 +6,7 @@ import {
 import { createContext, useContext, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
+import { randomString } from "@/lib/helpers/random-string";
 
 const USERNAME_KEY = "crowdplay_username";
 
@@ -35,7 +36,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState<string | null>(() => {
-    // Initialize from localStorage
+    // Only get from localStorage, don't generate random
     return localStorage.getItem(USERNAME_KEY);
   });
 
@@ -43,6 +44,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUsername(name);
     localStorage.setItem(USERNAME_KEY, name);
   };
+
+  // Initialize username if not set
+  useEffect(() => {
+    if (username) return;
+    handleSetUsername(randomString("_"));
+  }, [username]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
@@ -53,13 +60,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           handleSetUsername(user.displayName);
         }
         setLoading(false);
-      }
-      else {
+      } else {
         // Add anonymous authentication
         try {
           await signInAnonymously(auth);
-        }
-        catch (error) {
+        } catch (error) {
           console.error("Failed to sign in anonymously:", error);
         }
       }
@@ -73,8 +78,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await firebaseSignOut(auth);
       localStorage.removeItem(USERNAME_KEY);
       setUsername(null);
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error signing out:", error);
       throw error;
     }

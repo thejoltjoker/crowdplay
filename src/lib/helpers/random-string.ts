@@ -13,12 +13,12 @@ export function randomAdjective(): string {
   return adjectives[Math.floor(Math.random() * adjectives.length)];
 }
 
-export function randomString(): string {
+export function randomString(delimiter: string = ""): string {
   return [
     capitalize(randomAdjective()),
     capitalize(randomAdjective()),
     capitalize(randomAnimal()),
-  ].join("");
+  ].join(delimiter);
 }
 
 export function randomTestString(): string {

@@ -1,7 +1,7 @@
 import { doc, onSnapshot } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
 
-import { db } from "@/lib/firebase";
+import { firestore } from "@/lib/firebase";
 import { zodConverter } from "@/lib/firebase/firestore";
 import { updatePlayerStats } from "@/lib/firebase/users";
 import {
@@ -26,7 +26,7 @@ interface PlayerContextType {
 
 const PlayerContext = createContext<PlayerContextType>({
   player: null,
-  loading: true,
+  loading: false,
   error: null,
   updateStats: async () => {},
 });
@@ -75,7 +75,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     }
 
     // Handle authenticated user with Firestore
-    const playerRef = doc(db, "players", user.uid).withConverter(
+    const playerRef = doc(firestore, "players", user.uid).withConverter(
       zodConverter(playerSchema),
     );
 
@@ -83,11 +83,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       playerRef,
       (doc) => {
         if (doc.exists()) {
-          setPlayerData(doc.data());
+          setPlayerData(doc.data() as Player);
           // Clear local stats after successful authentication
           clearLocalStats();
-        }
-        else {
+        } else {
           setPlayerData(null);
         }
         setLoading(false);
@@ -103,8 +102,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   }, [user?.uid, isAnonymous, username]);
 
   const handleUpdateStats = async (gameScore: number, won: boolean) => {
-    if (!user?.uid)
-      return;
+    if (!user?.uid) return;
 
     try {
       if (isAnonymous) {
@@ -125,14 +123,12 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
         };
 
         saveLocalStats(newStats);
-        setPlayerData(prev => (prev ? { ...prev, stats: newStats } : null));
-      }
-      else {
+        setPlayerData((prev) => (prev ? { ...prev, stats: newStats } : null));
+      } else {
         // Update Firestore for authenticated users
         await updatePlayerStats(user.uid, gameScore, won);
       }
-    }
-    catch (err) {
+    } catch (err) {
       console.error("Error updating user stats:", err);
       setError(
         err instanceof Error ? err : new Error("Failed to update stats"),

@@ -10,19 +10,17 @@ import {
 
 import type { Player, PlayerStats } from "@/lib/schemas/player";
 
-import { db } from "@/lib/firebase";
+import { firestore as conn } from "@/lib/firebase";
 import { playerSchema } from "@/lib/schemas/player";
 
-import { collections, zodConverter } from "./firestore";
+import { db, zodConverter } from "./firestore";
 
 export async function createPlayer(
   playerData: Omit<Player, "createdAt" | "updatedAt">,
 ): Promise<Player> {
   try {
     const now = Date.now();
-    const playerRef = doc(db, "players", playerData.uid).withConverter(
-      zodConverter(playerSchema),
-    );
+    const playerRef = db.players.getDocRef(playerData.uid);
 
     const newPlayer: Player = {
       ...playerData,
@@ -32,8 +30,7 @@ export async function createPlayer(
 
     await setDoc(playerRef, newPlayer);
     return newPlayer;
-  }
-  catch (error) {
+  } catch (error) {
     console.error("Error creating player:", error);
     throw error;
   }
@@ -41,7 +38,7 @@ export async function createPlayer(
 
 export async function getPlayer(playerId: string): Promise<Player | null> {
   try {
-    const playerRef = doc(db, "players", playerId).withConverter(
+    const playerRef = doc(conn, "players", playerId).withConverter(
       zodConverter(playerSchema),
     );
     const playerDoc = await getDoc(playerRef);
@@ -51,8 +48,7 @@ export async function getPlayer(playerId: string): Promise<Player | null> {
     }
 
     return playerDoc.data();
-  }
-  catch (error) {
+  } catch (error) {
     console.error("Error getting player:", error);
     throw error;
   }
@@ -63,15 +59,14 @@ export async function updatePlayer(
   updates: Partial<Omit<Player, "uid" | "createdAt">>,
 ): Promise<void> {
   try {
-    const playerRef = doc(db, "players", playerId).withConverter(
+    const playerRef = doc(conn, "players", playerId).withConverter(
       zodConverter(playerSchema),
     );
     await updateDoc(playerRef, {
       ...updates,
       updatedAt: Date.now(),
     });
-  }
-  catch (error) {
+  } catch (error) {
     console.error("Error updating player:", error);
     throw error;
   }
@@ -97,23 +92,9 @@ export async function updatePlayerStats(
     };
 
     await updatePlayer(playerId, { stats: newStats });
-  }
-  catch (error) {
+  } catch (error) {
     console.error("Error updating player stats:", error);
     throw error;
   }
 }
 
-export async function getPlayersByRole(
-  role: Player["role"],
-): Promise<Player[]> {
-  try {
-    const q = query(collections.players, where("role", "==", role));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data());
-  }
-  catch (error) {
-    console.error("Error getting players by role:", error);
-    throw error;
-  }
-}

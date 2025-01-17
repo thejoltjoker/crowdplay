@@ -69,6 +69,30 @@
       0 0 2px rgba(41, 251, 170, 0.5),
       0 0 8px rgba(41, 251, 170, 0.2),
       0 0 16px rgba(91, 251, 220, 0.2);
+    line-height: 1;
+  }
+  h1 {
+    @apply text-4xl font-bold;
+  }
+
+  h2 {
+    @apply text-3xl font-bold;
+  }
+
+  h3 {
+    @apply text-2xl font-bold;
+  }
+
+  h4 {
+    @apply text-xl font-bold;
+  }
+
+  h5 {
+    @apply text-lg font-bold;
+  }
+
+  h6 {
+    @apply text-base font-bold;
   }
 
   nav {
@@ -101,6 +125,10 @@
 
 @layer utilities {
   .bg-crt {
-    background: repeating-linear-gradient(hsl(169, 89%, 4%) 0px, hsl(169, 89%, 5%) 3px, hsl(169, 89%, 4%) 6px);
+    background: repeating-linear-gradient(
+      hsl(169, 89%, 4%) 0px,
+      hsl(169, 89%, 5%) 3px,
+      hsl(169, 89%, 4%) 6px
+    );
   }
 }

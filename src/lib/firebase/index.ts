@@ -23,12 +23,12 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const analytics = getAnalytics(app);
-export const db = getFirestore(app);
+export const firestore = getFirestore(app);
 export const functions = getFunctions(app);
 
 if (import.meta.env.DEV) {
   connectFirestoreEmulator(
-    db,
+    firestore,
     "127.0.0.1",
     firebaseJson.emulators.firestore.port ?? 8080,
   );

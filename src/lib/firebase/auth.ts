@@ -1,10 +1,10 @@
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 
-import type { Player } from "@/lib/schemas/player";
+import { type Player } from "@/lib/schemas/player";
 
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { createPlayer } from "@/lib/firebase/users";
+import { docs } from "./firestore";
 
 export const googleProvider = new GoogleAuthProvider();
 
@@ -12,9 +12,7 @@ export async function signInWithGoogle(player?: Player | null) {
   try {
     const result = await signInWithPopup(auth, googleProvider);
 
-    // Create user document in Firestore if it doesn't exist
-    const userRef = doc(db, "users", result.user.uid);
-    const userDoc = await getDoc(userRef);
+    const userDoc = await docs.players(result.user.uid);
 
     if (!userDoc.exists()) {
       const data: Player = {
@@ -34,8 +32,7 @@ export async function signInWithGoogle(player?: Player | null) {
     }
 
     return result.user;
-  }
-  catch (error) {
+  } catch (error) {
     console.error("Error signing in with Google:", error);
     throw error;
   }
