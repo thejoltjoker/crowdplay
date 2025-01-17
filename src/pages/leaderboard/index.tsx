@@ -1,8 +1,8 @@
-import { collection, onSnapshot } from "firebase/firestore";
+import { onSnapshot } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import type { User } from "@/lib/schemas/user";
+import type { Player } from "@/lib/schemas/player";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,18 +13,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { db } from "@/lib/firebase";
-import { zodConverter } from "@/lib/firebase/firestore";
-import { userSchema } from "@/lib/schemas/user";
+import { collections, zodConverter } from "@/lib/firebase/firestore";
+import { playerSchema } from "@/lib/schemas/player";
 
 export default function LeaderboardPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const leaderboardQuery = collection(db, "users").withConverter(
-      zodConverter(userSchema),
+    const leaderboardQuery = collections.players.withConverter(
+      zodConverter(playerSchema),
     );
 
     const unsubscribe = onSnapshot(
@@ -42,7 +41,7 @@ export default function LeaderboardPage() {
             return -1;
           return b.totalScore - a.totalScore;
         });
-        setUsers(sortedUsers);
+        setPlayers(sortedUsers);
         setLoading(false);
       },
       (err) => {
@@ -88,24 +87,24 @@ export default function LeaderboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((user, index) => (
+                    {players.map((player, index) => (
                       <TableRow
-                        key={user.uid}
+                        key={player.uid}
                         className={
-                          user.stats.totalScore === 0
+                          player.stats.totalScore === 0
                             ? "text-muted-foreground"
                             : undefined
                         }
                       >
                         <TableCell className="font-medium">
-                          {user.stats.totalScore > 0 ? index + 1 : "-"}
+                          {player.stats.totalScore > 0 ? index + 1 : "-"}
                         </TableCell>
-                        <TableCell>{user.displayName}</TableCell>
+                        <TableCell>{player.username}</TableCell>
                         <TableCell className="text-right">
-                          {user.stats.totalScore}
+                          {player.stats.totalScore}
                         </TableCell>
                         <TableCell className="text-right">
-                          {user.stats.gamesPlayed}
+                          {player.stats.gamesPlayed}
                         </TableCell>
                       </TableRow>
                     ))}

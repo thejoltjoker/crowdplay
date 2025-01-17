@@ -14,13 +14,15 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signInWithGoogle } from "@/lib/firebase";
+import { signInWithGoogle } from "@/lib/firebase/auth";
 import { createGame, getActiveGames, joinGame } from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
+import { usePlayer } from "@/providers/player";
 
 export function LandingPage() {
   const navigate = useNavigate();
   const { user, username, setUsername, signOut, isAnonymous } = useAuth();
+  const { player } = usePlayer();
   const [tempUsername, setTempUsername] = useState(username || "");
   const [isEditing, setIsEditing] = useState(!username);
   const [activeGames, setActiveGames] = useState<Game[]>([]);
@@ -86,7 +88,7 @@ export function LandingPage() {
 
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(player);
     }
     catch (error) {
       console.error("Error signing in with Google:", error);

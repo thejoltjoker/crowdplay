@@ -374,7 +374,6 @@ function LobbyPage() {
                     <QuestionsQueue
                       questions={gameData.questions}
                       onRemoveQuestion={handleQuestionRemove}
-                      onMoveQuestion={() => {}}
                       onReorder={handleQuestionReorder}
                       currentQuestionIndex={
                         gameData.status === "playing"

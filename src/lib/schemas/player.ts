@@ -1,12 +1,23 @@
 import { z } from "zod";
 
+export const playerRoleSchema = z.enum(["player", "boss"]);
+
+export const playerStatsSchema = z.object({
+  gamesPlayed: z.number().default(0),
+  gamesWon: z.number().default(0),
+  totalScore: z.number().default(0),
+  lastGamePlayed: z.number().optional(),
+});
+
 export const playerSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  score: z.number().default(0),
-  isHost: z.boolean().default(false),
-  hasAnswered: z.boolean().default(false),
-  lastAnswerCorrect: z.boolean().default(false),
+  role: playerRoleSchema.default("player"),
+  stats: playerStatsSchema,
+  uid: z.string(),
+  username: z.string().nullable(),
+  createdAt: z.number(), // timestamp
+  updatedAt: z.number(), // timestamp
 });
 
 export type Player = z.infer<typeof playerSchema>;
+export type PlayerRole = z.infer<typeof playerRoleSchema>;
+export type PlayerStats = z.infer<typeof playerStatsSchema>;

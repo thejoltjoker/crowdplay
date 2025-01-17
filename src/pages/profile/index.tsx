@@ -13,11 +13,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { signInWithGoogle } from "@/lib/firebase/auth";
 import { useAuth } from "@/providers/auth";
-import { useUser } from "@/providers/user";
+import { usePlayer } from "@/providers/player";
 
 export function ProfilePage() {
   const { user, username, setUsername, signOut, isAnonymous } = useAuth();
-  const { userData, loading: isLoadingStats, error: statsError } = useUser();
+  const { player, loading: isLoadingStats, error: statsError } = usePlayer();
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempUsername, setTempUsername] = useState(username || "");
 
@@ -150,33 +150,23 @@ export function ProfilePage() {
               ? (
                   <div className="text-sm text-destructive">{statsError.message}</div>
                 )
-              : userData?.stats
+              : player?.stats
                 ? (
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div className="space-y-1">
                         <p className="text-sm font-medium">Games Played</p>
-                        <p className="text-2xl font-bold">
-                          {userData.stats.gamesPlayed}
-                        </p>
+                        <p className="text-2xl font-bold">{player.stats.gamesPlayed}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-medium">Total Score</p>
-                        <p className="text-2xl font-bold">
-                          {userData.stats.totalScore}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Average Score</p>
-                        <p className="text-2xl font-bold">
-                          {userData.stats.averageScore.toFixed(1)}
-                        </p>
+                        <p className="text-2xl font-bold">{player.stats.totalScore}</p>
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-medium">Last Game</p>
                         <p className="text-2xl font-bold">
-                          {userData.stats.lastGamePlayed
+                          {player.stats.lastGamePlayed
                             ? Temporal.Instant.fromEpochMilliseconds(
-                                userData.stats.lastGamePlayed,
+                                player.stats.lastGamePlayed,
                               )
                                 .toZonedDateTimeISO(Temporal.Now.timeZoneId())
                                 .toPlainDate()
@@ -186,14 +176,7 @@ export function ProfilePage() {
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-medium">Games Won</p>
-                        <p className="text-2xl font-bold">{userData.stats.gamesWon}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Win Rate</p>
-                        <p className="text-2xl font-bold">
-                          {userData.stats.winRate.toFixed(1)}
-                          %
-                        </p>
+                        <p className="text-2xl font-bold">{player.stats.gamesWon}</p>
                       </div>
                     </div>
                   )

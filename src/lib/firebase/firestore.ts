@@ -23,8 +23,10 @@ import { getLocalStats, updateLocalStats } from "@/lib/helpers/local-stats";
 import { gameSchema } from "@/lib/schemas/game";
 import { questionSchema } from "@/lib/schemas/question";
 
+import type { Player } from "../schemas/player";
+
 import { generateGameCode } from "../helpers/generate-game-code";
-import { userSchema, userStatsSchema } from "../schemas/user";
+import { playerSchema } from "../schemas/player";
 
 export const gameConverter = {
   toFirestore: (data: Game) => {
@@ -229,47 +231,51 @@ export async function updateUserStats(
   try {
     // If anonymous, only update local storage
     if (isAnonymous) {
-      updateLocalStats(userId, displayName, gameScore, isGameFinished);
+      updateLocalStats(gameScore, isGameFinished);
       return;
     }
 
-    const userStatsRef = doc(db, "user", userId).withConverter(
-      zodConverter(userStatsSchema),
+    const playerRef = doc(db, "players", userId).withConverter(
+      zodConverter(playerSchema),
     );
-    const userStatsDoc = await getDoc(userStatsRef);
+    const playerDoc = await getDoc(playerRef);
     const localStats = getLocalStats();
 
-    if (userStatsDoc.exists()) {
-      const currentStats = userStatsDoc.data();
+    if (playerDoc.exists()) {
+      const currentStats = playerDoc.data();
       const newTotalScore
         = currentStats.totalScore + gameScore + (localStats?.totalScore || 0);
       const newGamesPlayed
         = currentStats.gamesPlayed + 1 + (localStats?.gamesPlayed || 0);
-
-      await updateDoc(userStatsRef, {
-        totalScore: newTotalScore,
-        gamesPlayed: newGamesPlayed,
-        averageScore: newTotalScore / newGamesPlayed,
-        lastGamePlayed: Date.now(),
-        gamesWon: currentStats.gamesWon + (isGameFinished ? 1 : 0),
-        gamesLost: currentStats.gamesLost + (isGameFinished ? 0 : 1),
-        winRate: (currentStats.gamesWon / newGamesPlayed) * 100,
-        highestScore: Math.max(currentStats.highestScore, gameScore),
-      });
+      const data = {
+        stats: {
+          totalScore: newTotalScore,
+          gamesPlayed: newGamesPlayed,
+          lastGamePlayed: Date.now(),
+          gamesWon: currentStats.gamesWon + (isGameFinished ? 1 : 0),
+        },
+      };
+      await updateDoc(playerRef, data);
     }
     else {
       // For new users, include local stats if they exist
       const totalScore = gameScore + (localStats?.totalScore || 0);
       const gamesPlayed = 1 + (localStats?.gamesPlayed || 0);
 
-      await setDoc(userStatsRef, {
-        userId,
-        displayName,
-        totalScore,
-        gamesPlayed,
-        averageScore: totalScore / gamesPlayed,
-        lastGamePlayed: Date.now(),
-      });
+      const data: Player = {
+        uid: userId,
+        username: displayName,
+        role: "player",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        stats: {
+          totalScore,
+          gamesPlayed,
+          lastGamePlayed: Date.now(),
+          gamesWon: isGameFinished ? 1 : 0,
+        },
+      };
+      await setDoc(playerRef, data);
     }
   }
   catch (error) {
@@ -300,7 +306,7 @@ export async function getActiveGames(): Promise<Game[]> {
 }
 
 export const collections = {
-  users: collection(db, "users").withConverter(zodConverter(userSchema)),
+  players: collection(db, "players").withConverter(zodConverter(playerSchema)),
   games: collection(db, "games").withConverter(zodConverter(gameSchema)),
   questions: collection(db, "questions").withConverter(
     zodConverter(questionSchema),

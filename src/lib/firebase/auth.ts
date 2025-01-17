@@ -1,14 +1,14 @@
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
-import type { User } from "@/lib/schemas/user";
+import type { Player } from "@/lib/schemas/player";
 
 import { auth, db } from "@/lib/firebase";
-import { createUser } from "@/lib/firebase/users";
+import { createPlayer } from "@/lib/firebase/users";
 
 export const googleProvider = new GoogleAuthProvider();
 
-export async function signInWithGoogle(user?: User | null) {
+export async function signInWithGoogle(player?: Player | null) {
   try {
     const result = await signInWithPopup(auth, googleProvider);
 
@@ -17,26 +17,20 @@ export async function signInWithGoogle(user?: User | null) {
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
-      await createUser({
-        id: user?.id ?? result.user.uid,
-        displayName:
-          user?.displayName ?? result.user.displayName ?? "Anonymous User",
-        email: user?.email ?? result.user.email ?? null,
-        role: user?.role ?? "player",
-        uid: result.user.uid,
-        phoneNumber: result.user.phoneNumber,
-        photoURL: result.user.photoURL,
-        providerId: result.user.providerId,
+      const data: Player = {
+        username: player?.username ?? "Anonymous User",
+        uid: player?.uid ?? crypto.randomUUID(),
+        role: player?.role ?? "player",
+        createdAt: player?.createdAt ?? Date.now(),
+        updatedAt: Date.now(),
         stats: {
-          totalScore: user?.stats?.totalScore ?? 0,
-          gamesPlayed: user?.stats?.gamesPlayed ?? 0,
-          averageScore: user?.stats?.averageScore ?? 0,
-          gamesWon: user?.stats?.gamesWon ?? 0,
-          gamesLost: user?.stats?.gamesLost ?? 0,
-          winRate: user?.stats?.winRate ?? 0,
-          highestScore: user?.stats?.highestScore ?? 0,
+          totalScore: player?.stats?.totalScore ?? 0,
+          gamesPlayed: player?.stats?.gamesPlayed ?? 0,
+          gamesWon: player?.stats?.gamesWon ?? 0,
+          lastGamePlayed: player?.stats?.lastGamePlayed ?? undefined,
         },
-      });
+      };
+      await createPlayer(data);
     }
 
     return result.user;
