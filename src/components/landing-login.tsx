@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,12 +11,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { randomString } from "@/lib/helpers/random-string";
 import { useAuth } from "@/providers/auth";
+
+import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
 
 export interface LandingLoginProps {}
 
 const LandingLogin: React.FC<LandingLoginProps> = () => {
   const { username, setUsername } = useAuth();
+  const [tempUsername, setTempUsername] = useState(
+    username ?? randomString("_"),
+  );
   return (
     <Card className="mx-auto w-full">
       <CardHeader>
@@ -23,17 +30,29 @@ const LandingLogin: React.FC<LandingLoginProps> = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-muted-foreground">What should we call you?</p>
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            placeholder="Enter your username"
-            value={username ?? randomString("_")}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full"
-          />
-          <Button className="flex w-fit items-center gap-2">Save</Button>
-        </div>
+        <p className="text-muted-foreground">
+          Join a multiplayer quiz game and compete with friends!
+        </p>
+        <form
+          className="space-y-2"
+          onSubmit={() => {
+            setUsername(tempUsername);
+          }}
+        >
+          <Label>What should we call you?</Label>
+          <div className="flex w-full gap-2">
+            <Input
+              type="text"
+              placeholder="Enter your username"
+              value={tempUsername}
+              onChange={e => setTempUsername(e.target.value)}
+              className="w-full"
+            />
+            <Button type="submit" className="flex w-fit items-center gap-2">
+              Save
+            </Button>
+          </div>
+        </form>
       </CardContent>
       <Separator />
       <CardFooter className="pt-4">

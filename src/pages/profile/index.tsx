@@ -32,7 +32,7 @@ export function ProfilePage() {
     try {
       if (!user)
         return;
-      await signInWithGoogle();
+      await signInWithGoogle(player);
     }
     catch (error) {
       console.error("Error signing in with Google:", error);
@@ -140,6 +140,10 @@ export function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <pre>
+            RAW stats:
+            {JSON.stringify(player?.stats, null, 2)}
+          </pre>
           {isLoadingStats
             ? (
                 <div className="text-sm text-muted-foreground">

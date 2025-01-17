@@ -2,23 +2,22 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
 
 import { firestore } from "@/lib/firebase";
-import { zodConverter } from "@/lib/firebase/firestore";
-import { updatePlayerStats } from "@/lib/firebase/users";
+import { db, zodConverter } from "@/lib/firebase/firestore";
 import {
   clearLocalStats,
   getLocalStats,
   saveLocalStats,
 } from "@/lib/helpers/local-stats";
 import {
-  type Player,
+  type PlayerSchema,
   playerSchema,
-  type PlayerStats,
+  type PlayerStatsSchema,
 } from "@/lib/schemas/player";
 
 import { useAuth } from "./auth";
 
 interface PlayerContextType {
-  player: Player | null;
+  player: PlayerSchema | null;
   loading: boolean;
   error: Error | null;
   updateStats: (gameScore: number, won: boolean) => Promise<void>;
@@ -37,7 +36,7 @@ export interface PlayerProviderProps {
 
 export function PlayerProvider({ children }: PlayerProviderProps) {
   const { user, isAnonymous, username } = useAuth();
-  const [playerData, setPlayerData] = useState<Player | null>(null);
+  const [playerData, setPlayerData] = useState<PlayerSchema | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -51,18 +50,19 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     if (isAnonymous) {
       // Handle anonymous user with local storage
       const localStats = getLocalStats();
-      const now = Date.now();
+      const now = new Date();
 
-      const defaultStats: PlayerStats = {
+      const defaultStats: PlayerStatsSchema = {
         totalScore: 0,
         gamesPlayed: 0,
         gamesWon: 0,
         lastGamePlayed: undefined,
       };
 
-      const anonymousPlayerData: Player = {
+      const anonymousPlayerData: PlayerSchema = {
+        id: crypto.randomUUID(),
         uid: user.uid,
-        username: username ?? "Anonymous",
+        username,
         role: "player",
         createdAt: now,
         updatedAt: now,
@@ -83,10 +83,11 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       playerRef,
       (doc) => {
         if (doc.exists()) {
-          setPlayerData(doc.data() as Player);
+          setPlayerData(doc.data() as PlayerSchema);
           // Clear local stats after successful authentication
           clearLocalStats();
-        } else {
+        }
+        else {
           setPlayerData(null);
         }
         setLoading(false);
@@ -102,33 +103,43 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   }, [user?.uid, isAnonymous, username]);
 
   const handleUpdateStats = async (gameScore: number, won: boolean) => {
-    if (!user?.uid) return;
+    if (!user?.uid)
+      return;
 
     try {
       if (isAnonymous) {
         // Update local storage for anonymous users
-        const currentStats: PlayerStats = playerData?.stats ?? {
+        const currentStats: PlayerStatsSchema = playerData?.stats ?? {
           totalScore: 0,
           gamesPlayed: 0,
           gamesWon: 0,
           lastGamePlayed: undefined,
         };
 
-        const newStats: PlayerStats = {
+        const newStats: PlayerStatsSchema = {
           ...currentStats,
           totalScore: currentStats.totalScore + gameScore,
           gamesPlayed: currentStats.gamesPlayed + 1,
           gamesWon: currentStats.gamesWon + (won ? 1 : 0),
-          lastGamePlayed: Date.now(),
+          lastGamePlayed: new Date(),
         };
 
         saveLocalStats(newStats);
-        setPlayerData((prev) => (prev ? { ...prev, stats: newStats } : null));
-      } else {
-        // Update Firestore for authenticated users
-        await updatePlayerStats(user.uid, gameScore, won);
+        setPlayerData(prev => (prev ? { ...prev, stats: newStats } : null));
       }
-    } catch (err) {
+      else {
+        // Update Firestore for authenticated users
+        await db.players.update(user.uid, {
+          stats: {
+            totalScore: gameScore,
+            gamesPlayed: 1,
+            gamesWon: won ? 1 : 0,
+            lastGamePlayed: new Date(),
+          },
+        });
+      }
+    }
+    catch (err) {
       console.error("Error updating user stats:", err);
       setError(
         err instanceof Error ? err : new Error("Failed to update stats"),
@@ -145,6 +156,9 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
         updateStats: handleUpdateStats,
       }}
     >
+      <pre className="border border-red-500 text-xs">
+        {JSON.stringify(playerData, null, 2)}
+      </pre>
       {children}
     </PlayerContext.Provider>
   );

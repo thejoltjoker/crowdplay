@@ -1,4 +1,4 @@
-import type { Game } from "@/lib/schemas/game";
+import type { GameSchema } from "@/lib/schemas/game";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { isGameHost } from "@/lib/helpers/game-state";
 
 interface GameControlsProps {
-  game: Game;
+  game: GameSchema;
   gameCode: string;
   userId?: string;
   onStartGame: () => void;

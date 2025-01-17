@@ -1,15 +1,15 @@
-import type { PlayerStats } from "../schemas";
+import type { PlayerStatsSchema } from "../schemas";
 
 const LOCAL_STATS_KEY = "crowdplay_local_stats";
 
-export function getLocalStats(): PlayerStats | null {
+export function getLocalStats(): PlayerStatsSchema | null {
   const statsJson = localStorage.getItem(LOCAL_STATS_KEY);
   if (!statsJson) {
     return null;
   }
 
   try {
-    const stats = JSON.parse(statsJson) as PlayerStats;
+    const stats = JSON.parse(statsJson) as PlayerStatsSchema;
     return stats;
   }
   catch (error) {
@@ -19,7 +19,7 @@ export function getLocalStats(): PlayerStats | null {
   }
 }
 
-export function saveLocalStats(stats: PlayerStats): void {
+export function saveLocalStats(stats: PlayerStatsSchema): void {
   // Validate stats before saving
   if (
     typeof stats.totalScore !== "number"
@@ -58,7 +58,7 @@ export function updateLocalStats(
     ? currentGamesPlayed + 1
     : currentGamesPlayed;
 
-  const newStats: PlayerStats = {
+  const newStats: PlayerStatsSchema = {
     totalScore: newTotalScore,
     gamesPlayed: newGamesPlayed,
     gamesWon: (currentStats?.gamesWon || 0) + (isGameFinished ? 1 : 0),

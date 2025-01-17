@@ -6,18 +6,22 @@ export const playerStatsSchema = z.object({
   gamesPlayed: z.number().default(0),
   gamesWon: z.number().default(0),
   totalScore: z.number().default(0),
-  lastGamePlayed: z.number().optional(),
+  lastGamePlayed: z.coerce.date().optional(),
 });
 
 export const playerSchema = z.object({
+  id: z.string(),
   role: playerRoleSchema.default("player"),
   stats: playerStatsSchema,
   uid: z.string(),
   username: z.string().nullable(),
-  createdAt: z.number(), // timestamp
-  updatedAt: z.number(), // timestamp
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
 });
 
-export type Player = z.infer<typeof playerSchema>;
-export type PlayerRole = z.infer<typeof playerRoleSchema>;
-export type PlayerStats = z.infer<typeof playerStatsSchema>;
+export const setPlayerSchema = playerSchema.partial();
+
+export type PlayerSchema = z.infer<typeof playerSchema>;
+export type SetPlayerSchema = z.infer<typeof setPlayerSchema>;
+export type PlayerRoleSchema = z.infer<typeof playerRoleSchema>;
+export type PlayerStatsSchema = z.infer<typeof playerStatsSchema>;

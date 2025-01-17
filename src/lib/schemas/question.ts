@@ -8,4 +8,4 @@ export const questionSchema = z.object({
   timeLimit: z.number().nullable().default(30),
 });
 
-export type Question = z.infer<typeof questionSchema>;
+export type QuestionSchema = z.infer<typeof questionSchema>;

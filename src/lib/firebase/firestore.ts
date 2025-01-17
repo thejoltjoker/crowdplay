@@ -1,12 +1,13 @@
 import type {
   CollectionReference,
+  DocumentData,
+  DocumentReference,
+  DocumentSnapshot,
   FirestoreDataConverter,
   QueryConstraint,
   QueryDocumentSnapshot,
-  DocumentData,
-  DocumentReference,
+  QuerySnapshot,
 } from "firebase/firestore";
-import type { ZodSchema } from "zod";
 
 import {
   collection,
@@ -21,47 +22,20 @@ import {
   where,
 } from "firebase/firestore";
 import { nanoid } from "nanoid";
+import { z, type ZodSchema } from "zod";
 
-import type { Game } from "@/lib/schemas/game";
-import type { Question } from "@/lib/schemas/question";
+import type { GameSchema } from "@/lib/schemas/game";
+import type { Schema } from "@/lib/schemas/question";
 
 import { firestore as conn } from "@/lib/firebase";
 import { getLocalStats, updateLocalStats } from "@/lib/helpers/local-stats";
 import { gameSchema } from "@/lib/schemas/game";
 import { questionSchema } from "@/lib/schemas/question";
 
-import type { Player } from "../schemas/player";
+import type { PlayerSchema } from "../schemas/player";
 
 import { generateGameCode } from "../helpers/generate-game-code";
 import { playerSchema } from "../schemas/player";
-
-export const gameConverter = {
-  toFirestore: (data: Game) => {
-    try {
-      return gameSchema.parse(data);
-    } catch (error) {
-      console.error("Invalid game data:", error);
-      throw error;
-    }
-  },
-  fromFirestore: (snap: QueryDocumentSnapshot) => {
-    return gameSchema.parse(snap.data()) as Game;
-  },
-};
-
-export const questionConverter = {
-  toFirestore: (data: Question) => {
-    try {
-      return questionSchema.parse(data);
-    } catch (error) {
-      console.error("Invalid question data:", error);
-      throw error;
-    }
-  },
-  fromFirestore: (snap: QueryDocumentSnapshot) => {
-    return questionSchema.parse(snap.data()) as Question;
-  },
-};
 
 export function zodConverter<T>(
   zodSchema: ZodSchema<T>,
@@ -76,17 +50,82 @@ export function zodConverter<T>(
       }
     },
     fromFirestore: (snap: QueryDocumentSnapshot) => {
-      const parsed = zodSchema.safeParse(snap.data());
-      if (parsed.success) {
-        return parsed.data;
+      try {
+        return zodSchema.parse(snap.data()) as T;
+      } catch (error) {
+        console.error("Invalid data:", error);
+        throw error;
       }
-      console.warn("Your data may be incomplete");
-      return snap.data() as T;
     },
   };
 }
+export class FirestoreCollection<
+  T extends z.ZodTypeAny & { shape: { id: z.ZodString } },
+> {
+  public ref: CollectionReference<z.infer<T>>;
+  private schema: T;
+  constructor(collectionName: string, schema: T) {
+    this.ref = collection(conn, collectionName).withConverter(
+      zodConverter(schema),
+    );
+    this.schema = schema;
+  }
 
-const defaultQuestions: Omit<Question, "id">[] = [
+  getDocRef(id: string, schema?: z.ZodTypeAny): DocumentReference<T> {
+    return doc(this.ref, id).withConverter(
+      zodConverter(schema ?? this.schema),
+    ) as DocumentReference<T>;
+  }
+
+  async getDoc(id: string): Promise<DocumentSnapshot<T>> {
+    const ref = this.getDocRef(id);
+    return await getDoc(ref);
+  }
+
+  async query(
+    ...queryConstraints: QueryConstraint[]
+  ): Promise<QuerySnapshot<T>> {
+    return await getDocs(
+      query(this.ref, ...queryConstraints).withConverter(
+        zodConverter(this.schema),
+      ),
+    );
+  }
+
+  async setDoc(id: string, data: T): Promise<void> {
+    await setDoc(this.getDocRef(id), data);
+  }
+
+  // Abstractions
+  async getOne(id: string): Promise<T> {
+    const docSnap = await this.getDoc(id);
+    return docSnap.data() as T;
+  }
+
+  async create(data: z.infer<T>): Promise<void> {
+    await setDoc(this.getDocRef(data.id), data);
+  }
+
+  async update(id: string, data: z.infer<T>["partial"]): Promise<void> {
+    const partialSchema =
+      this.schema instanceof z.ZodObject ? this.schema.partial() : this.schema;
+
+    const docRef = doc(this.ref, id).withConverter(
+      zodConverter(partialSchema),
+    ) as DocumentReference<T>;
+
+    const validatedData = partialSchema.parse(data);
+    await updateDoc(docRef, validatedData);
+  }
+}
+
+export const db = {
+  players: new FirestoreCollection("players", playerSchema),
+  games: new FirestoreCollection("games", gameSchema),
+  questions: new FirestoreCollection("questions", questionSchema),
+};
+
+const defaultQuestions: Omit<Schema, "id">[] = [
   {
     text: "What is the capital of France?",
     options: ["London", "Berlin", "Paris", "Madrid"],
@@ -113,34 +152,6 @@ const defaultQuestions: Omit<Question, "id">[] = [
   },
 ];
 
-export async function fetchQuestions(): Promise<Question[]> {
-  // For testing, return default questions with generated IDs
-  return defaultQuestions.map((q) => ({
-    ...q,
-    id: nanoid(),
-  }));
-}
-
-export async function addQuestion(
-  question: Omit<Question, "id">,
-): Promise<Question> {
-  try {
-    const questionId = nanoid();
-    const questionRef = doc(conn, "questions", questionId).withConverter(
-      questionConverter,
-    );
-    const newQuestion: Question = {
-      ...question,
-      id: questionId,
-    };
-    await setDoc(questionRef, newQuestion);
-    return newQuestion;
-  } catch (error) {
-    console.error("Error adding question:", error);
-    throw error;
-  }
-}
-
 export async function createGame(
   hostId: string,
   hostName: string,
@@ -163,7 +174,7 @@ export async function createGame(
       id: nanoid(),
     }));
 
-    const game: Game = {
+    const game: GameSchema = {
       id: gameCode,
       status: "waiting",
       players: {
@@ -269,7 +280,7 @@ export async function updateUserStats(
       const totalScore = gameScore + (localStats?.totalScore || 0);
       const gamesPlayed = 1 + (localStats?.gamesPlayed || 0);
 
-      const data: Player = {
+      const data: PlayerSchema = {
         uid: userId,
         username: displayName,
         role: "player",
@@ -290,108 +301,18 @@ export async function updateUserStats(
   }
 }
 
-export async function getActiveGames(): Promise<Game[]> {
+export async function getActiveGames(): Promise<z.infer<typeof gameSchema>[]> {
   try {
-    const gamesCollection = collection(conn, "games").withConverter(
-      gameConverter,
-    );
-    const q = query(
-      gamesCollection,
+    const q: QueryConstraint[] = [
       where("status", "in", ["waiting", "playing"]),
       orderBy("currentQuestionIndex", "asc"),
       limit(10),
-    );
+    ];
 
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await db.games.query(...q);
     return querySnapshot.docs.map((doc) => doc.data());
   } catch (error) {
     console.error("Error getting active games:", error);
     throw error;
   }
 }
-
-export const firestore = {
-  players: {
-    set: async (player: Player) => {
-      const id = crypto.randomUUID();
-      await setDoc(
-        doc(conn, "players", id).withConverter(zodConverter(playerSchema)),
-        {
-          ...player,
-          uid: player.uid ?? id,
-        },
-      );
-    },
-    getOne: async (id: string) => {
-      const docSnap = await getDoc(doc(conn, "players", id));
-      return docSnap.data() as Player;
-    },
-    getMany: async (q: QueryConstraint) => {
-      const docSnap = await getDocs(
-        query(collection(conn, "players"), q).withConverter(
-          zodConverter(playerSchema),
-        ),
-      );
-      return docSnap.docs.map((doc) => doc.data()) as Player[];
-    },
-  },
-};
-
-export const docs = {
-  players: async (uid: string) => {
-    const ref = doc(conn, "players", uid).withConverter(
-      zodConverter(playerSchema),
-    );
-    return await getDoc(ref);
-  },
-};
-
-export class FirestoreDocument<T> {
-  private ref: DocumentReference<T>;
-  private schema: ZodSchema<T>;
-  constructor(collectionName: string, id: string, schema: ZodSchema<T>) {
-    this.ref = doc(conn, collectionName, id).withConverter(
-      zodConverter(schema),
-    );
-    this.schema = schema;
-  }
-
-  async get() {
-    return await getDoc(this.ref);
-  }
-
-  async set(data: T) {
-    await setDoc(this.ref, data);
-  }
-}
-
-export class FirestoreCollection<T> {
-  public ref: CollectionReference<T>;
-  private schema: ZodSchema<T>;
-  constructor(collectionName: string, schema: ZodSchema<T>) {
-    this.ref = collection(conn, collectionName).withConverter(
-      zodConverter(schema),
-    );
-    this.schema = schema;
-  }
-
-  getDocRef(id: string) {
-    return doc(this.ref, id).withConverter(zodConverter(this.schema));
-  }
-
-  async getDoc(id: string) {
-    const ref = this.getDocRef(id);
-    return await getDoc(ref);
-  }
-  async query(q: QueryConstraint) {
-    return await getDocs(
-      query(this.ref, q).withConverter(zodConverter(this.schema)),
-    );
-  }
-}
-
-export const db = {
-  players: new FirestoreCollection("players", playerSchema),
-  games: new FirestoreCollection("games", gameSchema),
-  questions: new FirestoreCollection("questions", questionSchema),
-};

@@ -4,13 +4,17 @@ import { AuthProvider } from "@/providers/auth";
 import { ThemeProvider } from "@/providers/theme";
 import { router } from "@/router";
 
+import { PlayerProvider } from "./providers/player";
+
 function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <RouterProvider router={router} />
-      </ThemeProvider>
-    </AuthProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <AuthProvider>
+        <PlayerProvider>
+          <RouterProvider router={router} />
+        </PlayerProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

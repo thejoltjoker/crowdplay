@@ -23,4 +23,39 @@ export const gameSchema = z.object({
   allowLateJoin: z.boolean().default(false),
 });
 
-export type Game = z.infer<typeof gameSchema>;
+export type GameSchema = z.infer<typeof gameSchema>;
+
+// interface FirestoreSchema {
+//   games: {
+//     [gameId: string]: {
+//       status: 'waiting' | 'active' | 'completed'
+//       startedAt: Timestamp
+//       currentQuestionIndex: number
+//       players: {
+//         [playerId: string]: {
+//           name: string
+//           score: number
+//           isReady: boolean
+//           lastActive: Timestamp
+//         }
+//       }
+//       questions: {
+//         [questionId: string]: {
+//           text: string
+//           options: string[]
+//           correctAnswer: string
+//           timeLimit: number
+//         }
+//       }
+//       answers: {
+//         [questionId: string]: {
+//           [playerId: string]: {
+//             selectedAnswer: string
+//             answeredAt: Timestamp
+//             isCorrect: boolean
+//           }
+//         }
+//       }
+//     }
+//   }
+// }

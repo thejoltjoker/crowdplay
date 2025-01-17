@@ -1,11 +1,11 @@
-import type { Game } from "@/lib/schemas/game";
+import type { GameSchema } from "@/lib/schemas/game";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { calculatePlayerScores } from "@/lib/helpers/game-state";
 
 interface GameResultsProps {
-  game: Game;
+  game: GameSchema;
 }
 
 export function GameResults({ game }: GameResultsProps) {

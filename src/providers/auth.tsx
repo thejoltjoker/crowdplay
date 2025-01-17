@@ -5,10 +5,10 @@ import {
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 
+import type { PlayerSchema } from "@/lib/schemas/player";
+
 import { auth } from "@/lib/firebase";
-import { randomString } from "@/lib/helpers/random-string";
-import { createPlayer } from "@/lib/firebase/users";
-import type { Player } from "@/lib/schemas/player";
+import { db } from "@/lib/firebase/firestore";
 
 const USERNAME_KEY = "crowdplay_username";
 
@@ -47,12 +47,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem(USERNAME_KEY, name);
   };
 
-  // Initialize username if not set
-  useEffect(() => {
-    if (username) return;
-    handleSetUsername(randomString("_"));
-  }, [username]);
-
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
@@ -63,7 +57,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           handleSetUsername(displayName);
 
           // Create player data if signing in with Google
-          const playerData: Omit<Player, "createdAt" | "updatedAt"> = {
+          const playerData: PlayerSchema = {
+            id: crypto.randomUUID(),
             username: displayName,
             uid: user.uid,
             role: "player",
@@ -72,20 +67,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               gamesPlayed: 0,
               gamesWon: 0,
             },
+            createdAt: new Date(),
+            updatedAt: new Date(),
           };
 
           try {
-            await createPlayer(playerData);
-          } catch (error) {
+            await db.players.create(playerData);
+          }
+          catch (error) {
             console.error("Error creating player:", error);
           }
         }
         setLoading(false);
-      } else {
+      }
+      else {
         // Add anonymous authentication
         try {
           await signInAnonymously(auth);
-        } catch (error) {
+        }
+        catch (error) {
           console.error("Failed to sign in anonymously:", error);
         }
       }
@@ -99,7 +99,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await firebaseSignOut(auth);
       localStorage.removeItem(USERNAME_KEY);
       setUsername(null);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error signing out:", error);
       throw error;
     }
@@ -125,6 +126,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isAnonymous: user?.isAnonymous ?? true,
       }}
     >
+      <pre className="overflow-hidden border border-blue-500 text-xs">
+        {JSON.stringify(user, null, 2)}
+      </pre>
       {children}
     </AuthContext.Provider>
   );

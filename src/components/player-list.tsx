@@ -1,4 +1,4 @@
-import type { Game } from "@/lib/schemas/game";
+import type { GameSchema } from "@/lib/schemas/game";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { getActivePlayers, getAnswerStats } from "@/lib/helpers/game-state";
 
 interface PlayerListProps {
-  game: Game;
+  game: GameSchema;
 }
 
 export function PlayerList({ game }: PlayerListProps) {
