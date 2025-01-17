@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 const App: React.FC = () => {
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex h-screen flex-col">
       <main className="flex flex-col items-center justify-center">
         <div>
           <Button>Create Room</Button>

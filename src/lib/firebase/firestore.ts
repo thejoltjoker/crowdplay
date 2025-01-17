@@ -1,4 +1,5 @@
 import type { QueryDocumentSnapshot } from "firebase/firestore";
+import type { ZodSchema } from "zod";
 
 import {
   collection,
@@ -16,13 +17,14 @@ import { nanoid } from "nanoid";
 
 import type { Game } from "@/lib/schemas/game";
 import type { Question } from "@/lib/schemas/question";
-import type { UserStats } from "@/lib/schemas/user-stats";
 
 import { db } from "@/lib/firebase";
 import { getLocalStats, updateLocalStats } from "@/lib/helpers/local-stats";
 import { gameSchema } from "@/lib/schemas/game";
 import { questionSchema } from "@/lib/schemas/question";
-import { userStatsSchema } from "@/lib/schemas/user-stats";
+
+import { generateGameCode } from "../helpers/generate-game-code";
+import { userSchema, userStatsSchema } from "../schemas/user";
 
 export const gameConverter = {
   toFirestore: (data: Game) => {
@@ -54,20 +56,22 @@ export const questionConverter = {
   },
 };
 
-export const userStatsConverter = {
-  toFirestore: (data: UserStats) => {
-    try {
-      return userStatsSchema.parse(data);
-    }
-    catch (error) {
-      console.error("Invalid user stats data:", error);
-      throw error;
-    }
-  },
-  fromFirestore: (snap: QueryDocumentSnapshot) => {
-    return userStatsSchema.parse(snap.data()) as UserStats;
-  },
-};
+export function zodConverter<T>(zodSchema: ZodSchema<T>) {
+  return {
+    toFirestore: (data: any) => {
+      try {
+        return zodSchema.parse(data);
+      }
+      catch (error) {
+        console.error("Invalid data:", error);
+        throw error;
+      }
+    },
+    fromFirestore: (snap: QueryDocumentSnapshot) => {
+      return zodSchema.parse(snap.data()) as T;
+    },
+  };
+}
 
 const defaultQuestions: Omit<Question, "id">[] = [
   {
@@ -123,10 +127,6 @@ export async function addQuestion(
     console.error("Error adding question:", error);
     throw error;
   }
-}
-
-function generateGameCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
 export async function createGame(
@@ -233,8 +233,8 @@ export async function updateUserStats(
       return;
     }
 
-    const userStatsRef = doc(db, "userStats", userId).withConverter(
-      userStatsConverter,
+    const userStatsRef = doc(db, "user", userId).withConverter(
+      zodConverter(userStatsSchema),
     );
     const userStatsDoc = await getDoc(userStatsRef);
     const localStats = getLocalStats();
@@ -251,7 +251,10 @@ export async function updateUserStats(
         gamesPlayed: newGamesPlayed,
         averageScore: newTotalScore / newGamesPlayed,
         lastGamePlayed: Date.now(),
-        displayName, // Update display name in case it changed
+        gamesWon: currentStats.gamesWon + (isGameFinished ? 1 : 0),
+        gamesLost: currentStats.gamesLost + (isGameFinished ? 0 : 1),
+        winRate: (currentStats.gamesWon / newGamesPlayed) * 100,
+        highestScore: Math.max(currentStats.highestScore, gameScore),
       });
     }
     else {
@@ -295,3 +298,11 @@ export async function getActiveGames(): Promise<Game[]> {
     throw error;
   }
 }
+
+export const collections = {
+  users: collection(db, "users").withConverter(zodConverter(userSchema)),
+  games: collection(db, "games").withConverter(zodConverter(gameSchema)),
+  questions: collection(db, "questions").withConverter(
+    zodConverter(questionSchema),
+  ),
+};

@@ -59,7 +59,7 @@ function ResultsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
@@ -67,7 +67,7 @@ function ResultsPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-screen items-center justify-center">
         <p className="text-destructive">{error}</p>
       </div>
     );
@@ -75,7 +75,7 @@ function ResultsPage() {
 
   if (!gameData) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-screen items-center justify-center">
         <p className="text-destructive">Game not found</p>
       </div>
     );
@@ -87,7 +87,7 @@ function ResultsPage() {
     .sort((a, b) => b.score - a.score);
 
   return (
-    <div className=" mx-auto py-8">
+    <div className="mx-auto py-8">
       <Card>
         <CardHeader>
           <CardTitle className="text-center">Game Results</CardTitle>
@@ -111,10 +111,10 @@ function ResultsPage() {
             {sortedPlayers.map((player, index) => (
               <div
                 key={player.id}
-                className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
+                className="flex items-center justify-between rounded-lg bg-muted/50 p-4"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg font-semibold min-w-[2rem]">
+                  <span className="min-w-[2rem] text-lg font-semibold">
                     {index + 1}
                     .
                   </span>

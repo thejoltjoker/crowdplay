@@ -23,7 +23,7 @@ export function GameResults({ game }: GameResultsProps) {
             {rankedPlayers.map(player => (
               <li
                 key={player.id}
-                className="flex items-center justify-between p-2 rounded bg-muted"
+                className="flex items-center justify-between rounded bg-muted p-2"
               >
                 <div className="flex items-center gap-2">
                   <span className="font-medium">

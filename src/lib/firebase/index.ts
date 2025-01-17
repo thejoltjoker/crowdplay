@@ -1,12 +1,7 @@
 import { getAnalytics } from "firebase/analytics";
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import {
-  connectAuthEmulator,
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-} from "firebase/auth";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 
@@ -30,18 +25,6 @@ export const auth = getAuth(app);
 export const analytics = getAnalytics(app);
 export const db = getFirestore(app);
 export const functions = getFunctions(app);
-export const googleProvider = new GoogleAuthProvider();
-
-export async function signInWithGoogle() {
-  try {
-    const result = await signInWithPopup(auth, googleProvider);
-    return result.user;
-  }
-  catch (error) {
-    console.error("Error signing in with Google:", error);
-    throw error;
-  }
-}
 
 if (import.meta.env.DEV) {
   connectFirestoreEmulator(

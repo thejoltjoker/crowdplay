@@ -1,47 +1,13 @@
 import {
   signOut as firebaseSignOut,
   signInAnonymously,
-  signInWithPopup,
   type User,
 } from "firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
 
-import { auth, googleProvider } from "@/lib/firebase";
-import { updateUserStats } from "@/lib/firebase/firestore";
-import { clearLocalStats, getLocalStats } from "@/lib/helpers/local-stats";
+import { auth } from "@/lib/firebase";
 
 const USERNAME_KEY = "crowdplay_username";
-
-// Add function to handle Google sign in and stats transfer
-export async function signInWithGoogleAndTransferStats() {
-  try {
-    // Get local stats before signing in
-    const localStats = getLocalStats();
-
-    // Sign in with Google
-    const result = await signInWithPopup(auth, googleProvider);
-    const user = result.user;
-
-    // If we had local stats, transfer them to the Google account
-    if (localStats && localStats.totalScore > 0) {
-      await updateUserStats(
-        user.uid,
-        user.displayName || "Unknown",
-        localStats.totalScore,
-        false, // Not anonymous anymore
-        true, // Treat as a finished game to update games played
-      );
-      // Clear local stats after successful transfer
-      clearLocalStats();
-    }
-
-    return user;
-  }
-  catch (error) {
-    console.error("Error signing in with Google:", error);
-    throw error;
-  }
-}
 
 export interface AuthContextType {
   user: User | null;
@@ -117,7 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Add loading UI handler
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex h-screen items-center justify-center">
         Loading...
       </div>
     );

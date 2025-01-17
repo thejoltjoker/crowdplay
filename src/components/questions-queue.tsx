@@ -1,6 +1,7 @@
 import {
-  DndContext,
   closestCenter,
+  DndContext,
+  type DragEndEvent,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -16,6 +17,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 
 import type { Question } from "@/lib/schemas";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -34,15 +36,15 @@ interface QuestionItemProps
   currentQuestionIndex: number;
 }
 
-const QuestionItem = ({
+function QuestionItem({
   question,
   index,
   currentQuestionIndex,
   onRemoveQuestion,
   isHost,
-}: QuestionItemProps) => {
-  const { attributes, listeners, setNodeRef, transform, transition, active } =
-    useSortable({
+}: QuestionItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, active }
+    = useSortable({
       id: question.id,
       disabled: !isHost || index <= currentQuestionIndex,
     });
@@ -56,14 +58,14 @@ const QuestionItem = ({
         position: "relative",
       }}
       className={cn(
-        "flex items-center justify-between p-3 rounded border",
+        "flex items-center justify-between rounded border p-3",
         index === currentQuestionIndex && "border-primary bg-primary/5",
         index < currentQuestionIndex && "border-muted bg-muted/50",
         index > currentQuestionIndex && "border-border",
-        active?.id === question.id && "shadow-lg z-[999] bg-background"
+        active?.id === question.id && "z-[999] bg-background shadow-lg",
       )}
     >
-      <div className="flex items-center gap-2 flex-1">
+      <div className="flex flex-1 items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
@@ -77,7 +79,9 @@ const QuestionItem = ({
         <div>
           <p className="font-medium">{question.text}</p>
           <p className="text-sm text-muted-foreground">
-            {question.options.length} options
+            {question.options.length}
+            {" "}
+            options
             {question.timeLimit && ` · ${question.timeLimit}s`}
           </p>
         </div>
@@ -92,37 +96,38 @@ const QuestionItem = ({
       </Button>
     </li>
   );
-};
+}
 
-export const QuestionsQueue = ({
+export function QuestionsQueue({
   questions,
   onRemoveQuestion,
   onReorder,
   currentQuestionIndex = -1,
   isHost = false,
-}: QuestionsQueueProps) => {
+}: QuestionsQueueProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   if (!questions.length) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-4">
+      <p className="py-4 text-center text-sm text-muted-foreground">
         No questions added yet
       </p>
     );
   }
 
-  const handleDragEnd = (event) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id)
+      return;
 
-    const oldIndex = questions.findIndex((q) => q.id === active.id);
-    const newIndex = questions.findIndex((q) => q.id === over.id);
+    const oldIndex = questions.findIndex(q => q.id === active.id);
+    const newIndex = questions.findIndex(q => q.id === over.id);
 
     if (oldIndex > currentQuestionIndex && newIndex > currentQuestionIndex) {
       onReorder(oldIndex, newIndex);
@@ -136,10 +141,10 @@ export const QuestionsQueue = ({
       onDragEnd={handleDragEnd}
     >
       <SortableContext
-        items={questions.map((q) => q.id)}
+        items={questions.map(q => q.id)}
         strategy={verticalListSortingStrategy}
       >
-        <ul className="space-y-2 relative">
+        <ul className="relative space-y-2">
           {questions.map((question, index) => (
             <QuestionItem
               key={question.id}
@@ -154,6 +159,6 @@ export const QuestionsQueue = ({
       </SortableContext>
     </DndContext>
   );
-};
+}
 
 export default QuestionsQueue;

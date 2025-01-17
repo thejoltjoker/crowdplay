@@ -1,4 +1,4 @@
-import type { UserStats } from "@/lib/schemas/user-stats";
+import type { UserStats } from "@/lib/schemas/user";
 
 const LOCAL_STATS_KEY = "crowdplay_local_stats";
 
@@ -11,8 +11,7 @@ export function getLocalStats(): UserStats | null {
   try {
     const stats = JSON.parse(statsJson) as UserStats;
     return stats;
-  }
-  catch (error) {
+  } catch (error) {
     console.error("Error parsing local stats:", error);
     localStorage.removeItem(LOCAL_STATS_KEY); // Clear invalid data
     return null;
@@ -22,8 +21,8 @@ export function getLocalStats(): UserStats | null {
 export function saveLocalStats(stats: UserStats): void {
   // Validate stats before saving
   if (
-    typeof stats.totalScore !== "number"
-    || typeof stats.gamesPlayed !== "number"
+    typeof stats.totalScore !== "number" ||
+    typeof stats.gamesPlayed !== "number"
   ) {
     console.error("Invalid stats object:", stats);
     return;
@@ -59,8 +58,8 @@ export function updateLocalStats(
   const newGamesPlayed = isGameFinished
     ? currentGamesPlayed + 1
     : currentGamesPlayed;
-  const newAverageScore
-    = newGamesPlayed > 0 ? newTotalScore / newGamesPlayed : 0;
+  const newAverageScore =
+    newGamesPlayed > 0 ? newTotalScore / newGamesPlayed : 0;
 
   const newStats: UserStats = {
     userId,

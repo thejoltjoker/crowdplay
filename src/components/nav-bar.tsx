@@ -32,7 +32,7 @@ export function NavBar() {
           <div className="flex w-full items-center justify-between space-x-8">
             <div className="text-xl font-bold">CrowdPlay</div>
             <div className="flex items-center space-x-4">
-              {navItems.map((item) => (
+              {navItems.map(item => (
                 <Link
                   key={item.href}
                   to={item.href}
@@ -56,7 +56,7 @@ export function NavBar() {
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden">
         <div className="mx-auto px-4">
           <div className="flex h-16 items-center justify-around">
-            {navItems.map((item) => (
+            {navItems.map(item => (
               <Link
                 key={item.href}
                 to={item.href}
