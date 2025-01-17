@@ -39,8 +39,7 @@ function LobbyPage() {
   const [loadingQuestions, setLoadingQuestions] = useState(false);
 
   useEffect(() => {
-    if (!gameCode)
-      return;
+    if (!gameCode) return;
 
     const unsubscribe = onSnapshot(
       db.games.getDocRef(gameCode),
@@ -59,16 +58,14 @@ function LobbyPage() {
             if (data.status === "waiting" || data.allowLateJoin) {
               await joinGame(gameCode, user.uid, player.username);
               return;
-            }
-            else {
+            } else {
               setError(
                 "Game has already started and late joining is not allowed",
               );
               setLoading(false);
               return;
             }
-          }
-          catch (error) {
+          } catch (error) {
             console.error("Error joining game:", error);
             setError(
               error instanceof Error ? error.message : "Error joining game",
@@ -99,63 +96,55 @@ function LobbyPage() {
     const loadQuestions = async () => {
       try {
         setLoadingQuestions(true);
-        if (!gameCode)
-          throw new Error("Game code is required");
+        if (!gameCode) throw new Error("Game code is required");
         const game = await db.games.getOne(gameCode);
         const questions = game.questions;
         setAvailableQuestions(questions);
-      }
-      catch (error) {
+      } catch (error) {
         console.error("Error loading questions:", error);
         setError("Error loading questions");
-      }
-      finally {
+      } finally {
         setLoadingQuestions(false);
       }
     };
 
     if (
-      gameData?.players[user?.uid ?? ""]?.isHost
-      && availableQuestions.length === 0
+      gameData?.players[user?.uid ?? ""]?.isHost &&
+      availableQuestions.length === 0
     ) {
       loadQuestions();
     }
   }, [gameData, user?.uid, availableQuestions.length]);
 
   const handleStartGame = async () => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       await db.games.update(gameCode, {
         status: "playing",
         currentQuestionStartedAt: Date.now(),
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error starting game:", error);
       setError("Error starting game");
     }
   };
 
   const handleEndGame = async () => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       await db.games.update(gameCode, {
         status: "finished",
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error ending game:", error);
       setError("Error ending game");
     }
   };
 
   const handleQuestionAdd = async (formData: any) => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       const options = [];
@@ -175,31 +164,27 @@ function LobbyPage() {
       await db.games.update(gameCode, {
         questions: [...gameData.questions, newQuestion],
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error adding question:", error);
       setError("Error adding question");
     }
   };
 
   const handleQuestionRemove = async (questionId: string) => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       await db.games.update(gameCode, {
-        questions: gameData.questions.filter(q => q.id !== questionId),
+        questions: gameData.questions.filter((q) => q.id !== questionId),
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error removing question:", error);
       setError("Error removing question");
     }
   };
 
   const handleQuestionReorder = async (oldIndex: number, newIndex: number) => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       const newQuestions = [...gameData.questions];
@@ -209,16 +194,14 @@ function LobbyPage() {
       await db.games.update(gameCode, {
         questions: newQuestions,
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error reordering questions:", error);
       setError("Error reordering questions");
     }
   };
 
   const handleNextQuestion = async () => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       const nextQuestionIndex = gameData.currentQuestionIndex + 1;
@@ -234,8 +217,8 @@ function LobbyPage() {
       Object.entries(gameData.players).forEach(([playerId, player]) => {
         if (player.hasAnswered && !player.isHost) {
           // Add the last question's score to the total score
-          updates[`players.${playerId}.score`]
-            = (player.score || 0) + (player.lastQuestionScore || 0);
+          updates[`players.${playerId}.score`] =
+            (player.score || 0) + (player.lastQuestionScore || 0);
         }
         // Reset player state for next question
         updates[`players.${playerId}.hasAnswered`] = false;
@@ -249,30 +232,26 @@ function LobbyPage() {
       if (isLastQuestion && !gameData.players[user.uid]?.isHost) {
         navigate(`/results/${gameCode}`);
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error moving to next question:", error);
       setError("Error moving to next question");
     }
   };
 
   const handleToggleLateJoin = async (checked: boolean) => {
-    if (!gameCode)
-      return;
+    if (!gameCode) return;
     try {
       await db.games.update(gameCode, {
         allowLateJoin: checked,
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error updating late join setting:", error);
       setError("Error updating late join setting");
     }
   };
 
   const handleNewGame = async () => {
-    if (!gameCode || !user || !gameData)
-      return;
+    if (!gameCode || !user || !gameData) return;
 
     try {
       await db.games.update(gameCode, {
@@ -281,8 +260,7 @@ function LobbyPage() {
         questions: [],
         allowLateJoin: false,
       });
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error starting new game:", error);
       setError("Error starting new game");
     }
@@ -339,75 +317,73 @@ function LobbyPage() {
       <div className="mt-8 grid gap-8 md:grid-cols-2">
         <PlayerList game={gameData} />
 
-        {isHost && gameData.status === "finished"
-          ? (
-              <GameResults game={gameData} />
-            )
-          : (
-              isHost && (
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                    <CardTitle>Questions</CardTitle>
-                    {gameData.status === "playing" && (
-                      <Button onClick={handleNextQuestion}>
-                        {gameData.currentQuestionIndex
-                        === gameData.questions.length - 1
-                          ? "End Game"
-                          : "Next Question"}
-                      </Button>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <AddQuestionDialog onSubmit={handleQuestionAdd} />
-                      {loadingQuestions && (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      )}
-                    </div>
-                    <QuestionsQueue
-                      questions={gameData.questions}
-                      onRemoveQuestion={handleQuestionRemove}
-                      onReorder={handleQuestionReorder}
-                      currentQuestionIndex={
-                        gameData.status === "playing"
-                          ? gameData.currentQuestionIndex
-                          : -1
-                      }
-                      isHost={isHost}
-                    />
-                  </CardContent>
-                  {gameData.status === "playing" && currentQuestion && (
-                    <CardFooter className="border-t pt-6">
-                      <div className="w-full space-y-4">
-                        <h3 className="font-semibold">Current Question</h3>
-                        <p>{currentQuestion.text}</p>
-                        {gameData.currentQuestionStartedAt && (
-                          <QuestionTimer
-                            timeLimit={currentQuestion.timeLimit}
-                            startedAt={gameData.currentQuestionStartedAt}
-                            onTimeUp={() => {}}
-                          />
-                        )}
-                        <div className="grid grid-cols-2 gap-2">
-                          {currentQuestion.options.map((option, index) => (
-                            <div
-                              key={index}
-                              className={`rounded border p-2 ${
-                                index === currentQuestion.correctOption
-                                  ? "border-green-500 bg-green-50 dark:bg-green-950"
-                                  : "border-border"
-                              }`}
-                            >
-                              {option}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </CardFooter>
+        {isHost && gameData.status === "finished" ? (
+          <GameResults game={gameData} />
+        ) : (
+          isHost && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle>Questions</CardTitle>
+                {gameData.status === "playing" && (
+                  <Button onClick={handleNextQuestion}>
+                    {gameData.currentQuestionIndex ===
+                    gameData.questions.length - 1
+                      ? "End Game"
+                      : "Next Question"}
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <AddQuestionDialog onSubmit={handleQuestionAdd} />
+                  {loadingQuestions && (
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   )}
-                </Card>
-              )
-            )}
+                </div>
+                <QuestionsQueue
+                  questions={gameData.questions}
+                  onRemoveQuestion={handleQuestionRemove}
+                  onReorder={handleQuestionReorder}
+                  currentQuestionIndex={
+                    gameData.status === "playing"
+                      ? gameData.currentQuestionIndex
+                      : -1
+                  }
+                  isHost={isHost}
+                />
+              </CardContent>
+              {gameData.status === "playing" && currentQuestion && (
+                <CardFooter className="border-t pt-6">
+                  <div className="w-full space-y-4">
+                    <h3 className="font-semibold">Current Question</h3>
+                    <p>{currentQuestion.text}</p>
+                    {gameData.currentQuestionStartedAt && (
+                      <QuestionTimer
+                        timeLimit={currentQuestion.timeLimit}
+                        startedAt={gameData.currentQuestionStartedAt}
+                        onTimeUp={() => {}}
+                      />
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {currentQuestion.options.map((option, index) => (
+                        <div
+                          key={index}
+                          className={`rounded border p-2 ${
+                            index === currentQuestion.correctOption
+                              ? "border-green-500 bg-green-50 dark:bg-green-950"
+                              : "border-border"
+                          }`}
+                        >
+                          {option}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardFooter>
+              )}
+            </Card>
+          )
+        )}
       </div>
     </div>
   );

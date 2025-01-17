@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { timestampSchema } from "./timestamp";
+import { timestampSchema, TimestampType } from "./timestamp";
 
 export const playerRoleSchema = z.enum(["player", "boss"]);
 
@@ -8,7 +8,7 @@ export const playerStatsSchema = z.object({
   gamesPlayed: z.number().default(0),
   gamesWon: z.number().default(0),
   totalScore: z.number().default(0),
-  lastGamePlayed: z.coerce.date().optional(),
+  lastGamePlayed: TimestampType.optional(),
 });
 
 export const playerSchema = z

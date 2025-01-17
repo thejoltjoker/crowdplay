@@ -7,21 +7,22 @@ import { auth } from "@/lib/firebase";
 
 import { db } from "./firestore";
 
+const USERNAME_KEY = "crowdplay_username";
 export const googleProvider = new GoogleAuthProvider();
 
 export async function signInWithGoogle(player?: PlayerSchema | null) {
   try {
     const result = await signInWithPopup(auth, googleProvider);
-
     const userDoc = await db.players.getDoc(result.user.uid);
+    const storedUsername = localStorage.getItem(USERNAME_KEY);
 
     if (!userDoc.exists()) {
       const data: PlayerSchema = {
-        id: player?.uid ?? crypto.randomUUID(),
-        username: player?.username ?? "Anonymous User",
-        uid: player?.uid ?? crypto.randomUUID(),
+        id: result.user.uid,
+        username: storedUsername ?? "Anonymous User",
+        uid: result.user.uid,
         role: player?.role ?? "player",
-        createdAt: player?.createdAt ?? Timestamp.now(),
+        createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         stats: {
           totalScore: player?.stats?.totalScore ?? 0,
@@ -31,11 +32,18 @@ export async function signInWithGoogle(player?: PlayerSchema | null) {
         },
       };
       await db.players.create(data);
+    } else {
+      // Update the username if it exists in localStorage
+      if (storedUsername) {
+        await db.players.update(result.user.uid, {
+          username: storedUsername,
+          updatedAt: Timestamp.now(),
+        });
+      }
     }
 
     return result.user;
-  }
-  catch (error) {
+  } catch (error) {
     console.error("Error signing in with Google:", error);
     throw error;
   }

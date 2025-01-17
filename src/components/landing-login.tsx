@@ -11,29 +11,35 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { randomString } from "@/lib/helpers/random-string";
 import { usePlayer } from "@/providers/player";
 
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
+import { randomString } from "@/lib/helpers/random-string";
+
+const USERNAME_KEY = "crowdplay_username";
 
 export interface LandingLoginProps {}
 
 const LandingLogin: React.FC<LandingLoginProps> = () => {
-  const { player, setUsername } = usePlayer();
+  const { setUsername } = usePlayer();
   const [tempUsername, setTempUsername] = useState(
-    player?.username ?? randomString("_"),
+    localStorage.getItem(USERNAME_KEY) ?? randomString("_"),
   );
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!tempUsername.trim()) return;
+
     try {
       await setUsername(tempUsername);
-    }
-    catch (error) {
+      localStorage.setItem(USERNAME_KEY, tempUsername);
+    } catch (error) {
       console.error("Failed to update username:", error);
     }
   };
+
+  const isNewUser = !localStorage.getItem(USERNAME_KEY);
 
   return (
     <Card className="mx-auto w-full">
@@ -44,7 +50,9 @@ const LandingLogin: React.FC<LandingLoginProps> = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-muted-foreground">
-          Join a multiplayer quiz game and compete with friends!
+          {isNewUser
+            ? "Please choose a username to get started!"
+            : "Join a multiplayer quiz game and compete with friends!"}
         </p>
         <form className="space-y-2" onSubmit={handleSubmit}>
           <Label>What should we call you?</Label>
@@ -53,10 +61,15 @@ const LandingLogin: React.FC<LandingLoginProps> = () => {
               type="text"
               placeholder="Enter your username"
               value={tempUsername}
-              onChange={e => setTempUsername(e.target.value)}
+              onChange={(e) => setTempUsername(e.target.value)}
               className="w-full"
+              required={isNewUser}
             />
-            <Button type="submit" className="flex w-fit items-center gap-2">
+            <Button
+              type="submit"
+              className="flex w-fit items-center gap-2"
+              disabled={!tempUsername.trim()}
+            >
               Save
             </Button>
           </div>
@@ -64,7 +77,11 @@ const LandingLogin: React.FC<LandingLoginProps> = () => {
       </CardContent>
       <Separator />
       <CardFooter className="pt-4">
-        <Button variant="outline" className="flex w-full items-center gap-2">
+        <Button
+          variant="outline"
+          className="flex w-full items-center gap-2"
+          disabled={isNewUser}
+        >
           Sign in with Google
         </Button>
       </CardFooter>

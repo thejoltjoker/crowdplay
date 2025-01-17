@@ -39,27 +39,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setUser(user);
-        // If user signs in with Google, use their display name as username and create player
-        if (!user.isAnonymous && user.displayName) {
-          // Create player data if signing in with Google
-          const playerData: PlayerSchema = {
-            id: user.uid ?? crypto.randomUUID(),
-            username: localStorage.getItem(USERNAME_KEY) ?? "Anonymous User",
-            uid: user.uid,
-            role: "player",
-            stats: {
-              totalScore: 0,
-              gamesPlayed: 0,
-              gamesWon: 0,
-            },
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-          };
+        // If user signs in with Google, create player with local storage username
+        if (!user.isAnonymous) {
+          const storedUsername = localStorage.getItem(USERNAME_KEY);
+          const userDoc = await db.players.getDoc(user.uid);
 
-          try {
-            await db.players.create(playerData);
-          } catch (error) {
-            console.error("Error creating player:", error);
+          if (!userDoc.exists()) {
+            // Create player data if signing in with Google
+            const playerData: PlayerSchema = {
+              id: user.uid,
+              username: storedUsername ?? "Anonymous User",
+              uid: user.uid,
+              role: "player",
+              stats: {
+                totalScore: 0,
+                gamesPlayed: 0,
+                gamesWon: 0,
+              },
+              createdAt: Timestamp.now(),
+              updatedAt: Timestamp.now(),
+            };
+
+            try {
+              await db.players.create(playerData);
+            } catch (error) {
+              console.error("Error creating player:", error);
+            }
+          } else if (storedUsername) {
+            // Update username if it exists in localStorage
+            try {
+              await db.players.update(user.uid, {
+                username: storedUsername,
+                updatedAt: Timestamp.now(),
+              });
+            } catch (error) {
+              console.error("Error updating player username:", error);
+            }
           }
         }
         setLoading(false);
