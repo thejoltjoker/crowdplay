@@ -11,11 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { randomString } from "@/lib/helpers/random-string";
 import { usePlayer } from "@/providers/player";
 
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
-import { randomString } from "@/lib/helpers/random-string";
 
 const USERNAME_KEY = "crowdplay_username";
 
@@ -29,12 +29,14 @@ const LandingLogin: React.FC<LandingLoginProps> = () => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!tempUsername.trim()) return;
+    if (!tempUsername.trim())
+      return;
 
     try {
       await setUsername(tempUsername);
       localStorage.setItem(USERNAME_KEY, tempUsername);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Failed to update username:", error);
     }
   };
@@ -61,7 +63,7 @@ const LandingLogin: React.FC<LandingLoginProps> = () => {
               type="text"
               placeholder="Enter your username"
               value={tempUsername}
-              onChange={(e) => setTempUsername(e.target.value)}
+              onChange={e => setTempUsername(e.target.value)}
               className="w-full"
               required={isNewUser}
             />

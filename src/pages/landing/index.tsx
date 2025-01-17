@@ -1,4 +1,4 @@
-import { LogOut, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -20,7 +20,7 @@ import { usePlayer } from "@/providers/player";
 
 export function LandingPage() {
   const navigate = useNavigate();
-  const { user, signOut, isAnonymous } = useAuth();
+  const { user, isAnonymous } = useAuth();
   const { player } = usePlayer();
   const [activeGames, setActiveGames] = useState<GameSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,9 +30,11 @@ export function LandingPage() {
       try {
         const games = await getActiveGames();
         setActiveGames(games);
-      } catch (error) {
+      }
+      catch (error) {
         console.error("Error loading active games:", error);
-      } finally {
+      }
+      finally {
         setIsLoading(false);
       }
     };
@@ -44,21 +46,25 @@ export function LandingPage() {
   }, []);
 
   const handleCreateGame = async () => {
-    if (!user) return;
+    if (!user)
+      return;
     try {
       const code = await createGame(user.uid, player?.username ?? "Steve");
       navigate(`/lobby/${code}`);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error creating game:", error);
     }
   };
 
   const handleJoinGame = async (code: string) => {
-    if (!user) return;
+    if (!user)
+      return;
     try {
       await joinGame(code, user.uid, player?.username ?? "Steve");
       navigate(`/lobby/${code}`);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error joining game:", error);
     }
   };
@@ -66,7 +72,8 @@ export function LandingPage() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle(player);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error signing in with Google:", error);
     }
   };
@@ -100,62 +107,70 @@ export function LandingPage() {
                   </Button>
                 </div>
 
-                {isLoading ? (
-                  <div className="py-4 text-center text-muted-foreground">
-                    Loading games...
-                  </div>
-                ) : activeGames.length > 0 ? (
-                  <div className="space-y-2">
-                    {activeGames.map((game) => {
-                      const playerCount = Object.keys(game.players).length;
-                      const hostName = Object.values(game.players).find(
-                        (p) => p.isHost,
-                      )?.name;
-                      const currentPlayer = user
-                        ? game.players[user.uid]
-                        : undefined;
-                      const isHost = Boolean(currentPlayer?.isHost);
-                      const hasJoined = currentPlayer !== undefined;
+                {isLoading
+                  ? (
+                      <div className="py-4 text-center text-muted-foreground">
+                        Loading games...
+                      </div>
+                    )
+                  : activeGames.length > 0
+                    ? (
+                        <div className="space-y-2">
+                          {activeGames.map((game) => {
+                            const playerCount = Object.keys(game.players).length;
+                            const hostName = Object.values(game.players).find(
+                              p => p.isHost,
+                            )?.name;
+                            const currentPlayer = user
+                              ? game.players[user.uid]
+                              : undefined;
+                            const isHost = Boolean(currentPlayer?.isHost);
+                            const hasJoined = currentPlayer !== undefined;
 
-                      return (
-                        <div
-                          key={game.id}
-                          className="flex items-center justify-between rounded-lg border p-3"
-                        >
-                          <div className="space-y-1">
-                            <div className="font-medium">Game #{game.id}</div>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Users className="h-3 w-3" />
-                              {playerCount} players • Host:
-                              {hostName}
-                            </div>
-                          </div>
-                          {user && (
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                hasJoined
-                                  ? navigate(`/lobby/${game.id}`)
-                                  : handleJoinGame(game.id)
-                              }
-                              disabled={false}
-                            >
-                              {isHost
-                                ? "Go to Lobby"
-                                : hasJoined
-                                  ? "Go to Game"
-                                  : "Join"}
-                            </Button>
-                          )}
+                            return (
+                              <div
+                                key={game.id}
+                                className="flex items-center justify-between rounded-lg border p-3"
+                              >
+                                <div className="space-y-1">
+                                  <div className="font-medium">
+                                    Game #
+                                    {game.id}
+                                  </div>
+                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                    <Users className="h-3 w-3" />
+                                    {playerCount}
+                                    {" "}
+                                    players • Host:
+                                    {hostName}
+                                  </div>
+                                </div>
+                                {user && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      hasJoined
+                                        ? navigate(`/lobby/${game.id}`)
+                                        : handleJoinGame(game.id)}
+                                    disabled={false}
+                                  >
+                                    {isHost
+                                      ? "Go to Lobby"
+                                      : hasJoined
+                                        ? "Go to Game"
+                                        : "Join"}
+                                  </Button>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="py-4 text-center text-muted-foreground">
-                    No active games found
-                  </div>
-                )}
+                      )
+                    : (
+                        <div className="py-4 text-center text-muted-foreground">
+                          No active games found
+                        </div>
+                      )}
               </div>
             )}
 

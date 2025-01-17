@@ -35,9 +35,11 @@ export function ProfilePage() {
 
   const handleGoogleSignIn = async () => {
     try {
-      if (!user) return;
+      if (!user)
+        return;
       await signInWithGoogle(player);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error signing in with Google:", error);
     }
   };
@@ -67,31 +69,33 @@ export function ProfilePage() {
                 <Pencil className="h-4 w-4" />
               </Button>
             </div>
-            {isEditingName ? (
-              <div className="flex space-x-2">
-                <Input
-                  value={tempUsername}
-                  onChange={(e) => setTempUsername(e.target.value)}
-                  placeholder="Enter a username"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleUsernameSubmit();
-                    }
-                  }}
-                  autoFocus
-                />
-                <Button
-                  onClick={handleUsernameSubmit}
-                  disabled={!tempUsername || tempUsername === player?.username}
-                >
-                  Save
-                </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {player?.username}
-              </p>
-            )}
+            {isEditingName
+              ? (
+                  <div className="flex space-x-2">
+                    <Input
+                      value={tempUsername}
+                      onChange={e => setTempUsername(e.target.value)}
+                      placeholder="Enter a username"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleUsernameSubmit();
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      onClick={handleUsernameSubmit}
+                      disabled={!tempUsername || tempUsername === player?.username}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                )
+              : (
+                  <p className="text-sm text-muted-foreground">
+                    {player?.username}
+                  </p>
+                )}
           </div>
 
           <div className="space-y-1">
@@ -109,16 +113,18 @@ export function ProfilePage() {
           )}
 
           <div className="pt-4">
-            {isAnonymous ? (
-              <Button className="w-full" onClick={handleGoogleSignIn}>
-                Sign in with Google
-              </Button>
-            ) : (
-              <Button variant="outline" className="w-full" onClick={signOut}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign Out
-              </Button>
-            )}
+            {isAnonymous
+              ? (
+                  <Button className="w-full" onClick={handleGoogleSignIn}>
+                    Sign in with Google
+                  </Button>
+                )
+              : (
+                  <Button variant="outline" className="w-full" onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                )}
           </div>
         </CardContent>
       </Card>
@@ -141,47 +147,53 @@ export function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoadingStats ? (
-            <div className="text-sm text-muted-foreground">
-              Loading stats...
-            </div>
-          ) : statsError ? (
-            <div className="text-sm text-destructive">{statsError.message}</div>
-          ) : player?.stats ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Games Played</p>
-                <p className="text-2xl font-bold">{player.stats.gamesPlayed}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Total Score</p>
-                <p className="text-2xl font-bold">{player.stats.totalScore}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Last Game</p>
-                <p className="text-2xl font-bold">
-                  {player.stats.lastGamePlayed != null &&
-                  typeof player.stats.lastGamePlayed.seconds === "number"
-                    ? Temporal.Instant.fromEpochMilliseconds(
-                        player.stats.lastGamePlayed.seconds * 1000,
-                      )
-                        .toZonedDateTimeISO(Temporal.Now.timeZoneId())
-                        .toPlainDate()
-                        .toString()
-                    : "Never"}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Games Won</p>
-                <p className="text-2xl font-bold">{player.stats.gamesWon}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              No game statistics available yet. Play some games to see your
-              stats!
-            </div>
-          )}
+          {isLoadingStats
+            ? (
+                <div className="text-sm text-muted-foreground">
+                  Loading stats...
+                </div>
+              )
+            : statsError
+              ? (
+                  <div className="text-sm text-destructive">{statsError.message}</div>
+                )
+              : player?.stats
+                ? (
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Games Played</p>
+                        <p className="text-2xl font-bold">{player.stats.gamesPlayed}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Total Score</p>
+                        <p className="text-2xl font-bold">{player.stats.totalScore}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Last Game</p>
+                        <p className="text-2xl font-bold">
+                          {player.stats.lastGamePlayed != null
+                          && typeof player.stats.lastGamePlayed.seconds === "number"
+                            ? Temporal.Instant.fromEpochMilliseconds(
+                                player.stats.lastGamePlayed.seconds * 1000,
+                              )
+                                .toZonedDateTimeISO(Temporal.Now.timeZoneId())
+                                .toPlainDate()
+                                .toString()
+                            : "Never"}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Games Won</p>
+                        <p className="text-2xl font-bold">{player.stats.gamesWon}</p>
+                      </div>
+                    </div>
+                  )
+                : (
+                    <div className="text-sm text-muted-foreground">
+                      No game statistics available yet. Play some games to see your
+                      stats!
+                    </div>
+                  )}
         </CardContent>
       </Card>
     </div>

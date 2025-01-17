@@ -1,4 +1,5 @@
 import { Timestamp } from "firebase/firestore";
+
 import type { PlayerStatsSchema } from "../schemas";
 
 const LOCAL_STATS_KEY = "crowdplay_local_stats";
@@ -63,7 +64,9 @@ export function updateLocalStats(
     totalScore: newTotalScore,
     gamesPlayed: newGamesPlayed,
     gamesWon: (currentStats?.gamesWon || 0) + (isGameFinished ? 1 : 0),
-    lastGamePlayed: isGameFinished ? Timestamp.now() : currentStats?.lastGamePlayed,
+    lastGamePlayed: isGameFinished
+      ? Timestamp.now()
+      : currentStats?.lastGamePlayed,
   };
 
   saveLocalStats(newStats);

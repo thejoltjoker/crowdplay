@@ -62,27 +62,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             try {
               await db.players.create(playerData);
-            } catch (error) {
+            }
+            catch (error) {
               console.error("Error creating player:", error);
             }
-          } else if (storedUsername) {
+          }
+          else if (storedUsername) {
             // Update username if it exists in localStorage
             try {
               await db.players.update(user.uid, {
                 username: storedUsername,
                 updatedAt: Timestamp.now(),
               });
-            } catch (error) {
+            }
+            catch (error) {
               console.error("Error updating player username:", error);
             }
           }
         }
         setLoading(false);
-      } else {
+      }
+      else {
         // Add anonymous authentication
         try {
           await signInAnonymously(auth);
-        } catch (error) {
+        }
+        catch (error) {
           console.error("Failed to sign in anonymously:", error);
         }
       }
@@ -95,7 +100,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await firebaseSignOut(auth);
       localStorage.removeItem(USERNAME_KEY);
-    } catch (error) {
+    }
+    catch (error) {
       console.error("Error signing out:", error);
       throw error;
     }

@@ -24,9 +24,9 @@ type PlayerAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: Error | null }
   | {
-      type: "UPDATE_PLAYER";
-      payload: Partial<Omit<PlayerSchema, "id" | "uid">>;
-    }
+    type: "UPDATE_PLAYER";
+    payload: Partial<Omit<PlayerSchema, "id" | "uid">>;
+  }
   | { type: "UPDATE_STATS"; payload: PlayerStatsSchema }
   | { type: "SET_USERNAME"; payload: string };
 
@@ -153,7 +153,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
         if (doc.exists()) {
           dispatch({ type: "SET_PLAYER", payload: doc.data() as PlayerSchema });
           clearLocalStats();
-        } else {
+        }
+        else {
           dispatch({ type: "SET_PLAYER", payload: null });
         }
         dispatch({ type: "SET_LOADING", payload: false });
@@ -171,18 +172,21 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   const handleUpdatePlayer = async (
     update: Partial<Omit<PlayerSchema, "id" | "uid">>,
   ) => {
-    if (!user?.uid) return;
+    if (!user?.uid)
+      return;
 
     try {
       if (isAnonymous) {
         dispatch({ type: "UPDATE_PLAYER", payload: update });
-      } else {
+      }
+      else {
         await db.players.update(user.uid, {
           ...update,
           updatedAt: Timestamp.now(),
         });
       }
-    } catch (err) {
+    }
+    catch (err) {
       console.error("Error updating player:", err);
       dispatch({
         type: "SET_ERROR",
@@ -198,7 +202,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   };
 
   const handleUpdateStats = async (gameScore: number, won: boolean) => {
-    if (!user?.uid) return;
+    if (!user?.uid)
+      return;
 
     try {
       if (isAnonymous) {
@@ -219,7 +224,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
         saveLocalStats(newStats);
         await handleUpdatePlayer({ stats: newStats });
-      } else {
+      }
+      else {
         await handleUpdatePlayer({
           stats: {
             totalScore: gameScore,
@@ -229,7 +235,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
           },
         });
       }
-    } catch (err) {
+    }
+    catch (err) {
       console.error("Error updating user stats:", err);
       dispatch({
         type: "SET_ERROR",

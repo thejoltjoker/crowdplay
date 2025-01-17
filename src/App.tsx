@@ -4,8 +4,8 @@ import { AuthProvider } from "@/providers/auth";
 import { ThemeProvider } from "@/providers/theme";
 import { router } from "@/router";
 
-import { PlayerProvider } from "./providers/player";
 import { GameProvider } from "./providers/game";
+import { PlayerProvider } from "./providers/player";
 
 function App() {
   return (

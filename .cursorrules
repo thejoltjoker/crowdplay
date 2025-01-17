@@ -6,6 +6,7 @@ Code Style and Structure:
 - Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError)
 - Structure files: exported component, subcomponents, helpers, static content, types
 - Keep components small and focused
+- Don't change the layout unless explicitly asked to
 
 Naming Conventions:
 

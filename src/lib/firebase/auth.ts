@@ -5,8 +5,8 @@ import type { PlayerSchema } from "@/lib/schemas/player";
 
 import { auth } from "@/lib/firebase";
 
-import { db } from "./firestore";
 import { randomString } from "../helpers/random-string";
+import { db } from "./firestore";
 
 const USERNAME_KEY = "crowdplay_username";
 export const googleProvider = new GoogleAuthProvider();
@@ -33,7 +33,8 @@ export async function signInWithGoogle(player?: PlayerSchema | null) {
         },
       };
       await db.players.create(data);
-    } else {
+    }
+    else {
       // Update the username if it exists in localStorage
       if (storedUsername) {
         await db.players.update(result.user.uid, {
@@ -44,7 +45,8 @@ export async function signInWithGoogle(player?: PlayerSchema | null) {
     }
 
     return result.user;
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error signing in with Google:", error);
     throw error;
   }

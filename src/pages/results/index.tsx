@@ -82,7 +82,7 @@ function ResultsPage() {
 
   // Sort players by score in descending order
   const sortedPlayers = Object.values(gameData.players)
-    .filter((p) => !p.isHost) // Exclude host from results
+    .filter(p => !p.isHost) // Exclude host from results
     .sort((a, b) => b.score - a.score);
 
   return (
@@ -96,7 +96,8 @@ function ResultsPage() {
         <CardContent className="space-y-8">
           <div className="text-center text-muted-foreground">
             <p>
-              Game Code:{" "}
+              Game Code:
+              {" "}
               <span className="font-mono font-bold text-foreground">
                 {gameId}
               </span>
@@ -115,12 +116,17 @@ function ResultsPage() {
               >
                 <div className="flex items-center gap-3">
                   <span className="min-w-[2rem] text-lg font-semibold">
-                    {index + 1}.
+                    {index + 1}
+                    .
                   </span>
                   <div>
                     <p className="font-medium">{player.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      Score: {player.score} points
+                      Score:
+                      {" "}
+                      {player.score}
+                      {" "}
+                      points
                     </p>
                   </div>
                 </div>
