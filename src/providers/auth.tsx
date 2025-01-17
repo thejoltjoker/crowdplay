@@ -7,6 +7,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 import { auth } from "@/lib/firebase";
 import { randomString } from "@/lib/helpers/random-string";
+import { createPlayer } from "@/lib/firebase/users";
+import type { Player } from "@/lib/schemas/player";
 
 const USERNAME_KEY = "crowdplay_username";
 
@@ -55,9 +57,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         setUser(user);
-        // If user signs in with Google, use their display name as username
-        if (!user.isAnonymous && user.displayName && !username) {
-          handleSetUsername(user.displayName);
+        // If user signs in with Google, use their display name as username and create player
+        if (!user.isAnonymous && user.displayName) {
+          const displayName = user.displayName;
+          handleSetUsername(displayName);
+
+          // Create player data if signing in with Google
+          const playerData: Omit<Player, "createdAt" | "updatedAt"> = {
+            username: displayName,
+            uid: user.uid,
+            role: "player",
+            stats: {
+              totalScore: 0,
+              gamesPlayed: 0,
+              gamesWon: 0,
+            },
+          };
+
+          try {
+            await createPlayer(playerData);
+          } catch (error) {
+            console.error("Error creating player:", error);
+          }
         }
         setLoading(false);
       } else {
