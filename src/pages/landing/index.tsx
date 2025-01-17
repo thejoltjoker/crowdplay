@@ -49,7 +49,10 @@ export function LandingPage() {
     if (!user)
       return;
     try {
-      const code = await createGame(user.uid, username ?? "Anonymous User");
+      const code = await createGame(
+        user.uid,
+        player?.username ?? "Anonymous User",
+      );
       navigate(`/lobby/${code}`);
     }
     catch (error) {
@@ -61,7 +64,7 @@ export function LandingPage() {
     if (!user)
       return;
     try {
-      await joinGame(code, user.uid, username ?? "Anonymous User");
+      await joinGame(code, user.uid, player?.username ?? "Anonymous User");
       navigate(`/lobby/${code}`);
     }
     catch (error) {
@@ -81,20 +84,20 @@ export function LandingPage() {
   return (
     <div className="w-full max-w-screen-md p-4">
       <h1 className="pb-8 pt-4 text-center text-4xl font-bold">Crowdplay</h1>
-      {!username && <LandingLogin />}
-      {username && (
+      {!player?.username && <LandingLogin />}
+      {player?.username && (
         <Card className="">
           <CardHeader>
             <CardTitle>Welcome to CrowdPlay</CardTitle>
             <CardDescription>
-              {username
-                ? `Welcome back, ${username}!`
+              {player?.username
+                ? `Welcome back, ${player.username}!`
                 : "Join a multiplayer quiz game and compete with friends!"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Active Games Section */}
-            {username && (
+            {player?.username && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-medium">Active Games</h3>

@@ -1,3 +1,5 @@
+import type { FormEvent } from "react";
+
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -10,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { randomString } from "@/lib/helpers/random-string";
-import { useAuth } from "@/providers/auth";
+import { usePlayer } from "@/providers/player";
 
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
@@ -18,10 +20,21 @@ import { Separator } from "./ui/separator";
 export interface LandingLoginProps {}
 
 const LandingLogin: React.FC<LandingLoginProps> = () => {
-  const { username, setUsername } = useAuth();
+  const { player, setUsername } = usePlayer();
   const [tempUsername, setTempUsername] = useState(
-    username ?? randomString("_"),
+    player?.username ?? randomString("_"),
   );
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      await setUsername(tempUsername);
+    }
+    catch (error) {
+      console.error("Failed to update username:", error);
+    }
+  };
+
   return (
     <Card className="mx-auto w-full">
       <CardHeader>
@@ -33,12 +46,7 @@ const LandingLogin: React.FC<LandingLoginProps> = () => {
         <p className="text-muted-foreground">
           Join a multiplayer quiz game and compete with friends!
         </p>
-        <form
-          className="space-y-2"
-          onSubmit={() => {
-            setUsername(tempUsername);
-          }}
-        >
+        <form className="space-y-2" onSubmit={handleSubmit}>
           <Label>What should we call you?</Label>
           <div className="flex w-full gap-2">
             <Input

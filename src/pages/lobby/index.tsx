@@ -23,11 +23,13 @@ import {
 import { db, joinGame } from "@/lib/firebase/firestore";
 import { isGameHost } from "@/lib/helpers/game-state";
 import { useAuth } from "@/providers/auth";
+import { usePlayer } from "@/providers/player";
 
 function LobbyPage() {
   const { gameId: gameCode } = useParams();
   const navigate = useNavigate();
-  const { user, username } = useAuth();
+  const { user } = useAuth();
+  const { player } = usePlayer();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [gameData, setGameData] = useState<GameSchema | null>(null);
@@ -52,10 +54,10 @@ function LobbyPage() {
         const data = doc.data();
 
         // Try to join the game if not already in it and not the host
-        if (user && username && !data.players[user.uid]) {
+        if (user && player?.username && !data.players[user.uid]) {
           try {
             if (data.status === "waiting" || data.allowLateJoin) {
-              await joinGame(gameCode, user.uid, username);
+              await joinGame(gameCode, user.uid, player.username);
               return;
             }
             else {
@@ -90,7 +92,7 @@ function LobbyPage() {
     );
 
     return () => unsubscribe();
-  }, [gameCode, navigate, user?.uid, username]);
+  }, [gameCode, navigate, user?.uid, player?.username]);
 
   // Fetch available questions
   useEffect(() => {

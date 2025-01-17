@@ -3,6 +3,7 @@ import {
   signInAnonymously,
   type User,
 } from "firebase/auth";
+import { Timestamp } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
 
 import type { PlayerSchema } from "@/lib/schemas/player";
@@ -34,8 +35,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const handleSetUsername = (name: string) => {};
-
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
@@ -53,25 +52,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               gamesPlayed: 0,
               gamesWon: 0,
             },
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
           };
 
           try {
             await db.players.create(playerData);
-          }
-          catch (error) {
+          } catch (error) {
             console.error("Error creating player:", error);
           }
         }
         setLoading(false);
-      }
-      else {
+      } else {
         // Add anonymous authentication
         try {
           await signInAnonymously(auth);
-        }
-        catch (error) {
+        } catch (error) {
           console.error("Failed to sign in anonymously:", error);
         }
       }
@@ -84,8 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await firebaseSignOut(auth);
       localStorage.removeItem(USERNAME_KEY);
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error signing out:", error);
       throw error;
     }
@@ -109,9 +104,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isAnonymous: user?.isAnonymous ?? true,
       }}
     >
-      <pre className="overflow-hidden border border-blue-500 text-xs">
-        {JSON.stringify(user, null, 2)}
-      </pre>
       {children}
     </AuthContext.Provider>
   );

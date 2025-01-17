@@ -48,6 +48,7 @@ export function zodConverter<T extends z.ZodTypeAny>(
     },
     fromFirestore: (snap: QueryDocumentSnapshot) => {
       try {
+        console.log(snap.data());
         return schema.parse(snap.data()) as z.infer<T>;
       }
       catch (error) {

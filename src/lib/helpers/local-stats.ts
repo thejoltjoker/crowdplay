@@ -62,7 +62,7 @@ export function updateLocalStats(
     totalScore: newTotalScore,
     gamesPlayed: newGamesPlayed,
     gamesWon: (currentStats?.gamesWon || 0) + (isGameFinished ? 1 : 0),
-    lastGamePlayed: isGameFinished ? Date.now() : currentStats?.lastGamePlayed,
+    lastGamePlayed: isGameFinished ? new Date() : currentStats?.lastGamePlayed,
   };
 
   saveLocalStats(newStats);

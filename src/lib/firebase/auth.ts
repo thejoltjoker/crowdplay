@@ -1,4 +1,5 @@
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { Timestamp } from "firebase/firestore";
 
 import type { PlayerSchema } from "@/lib/schemas/player";
 
@@ -20,8 +21,8 @@ export async function signInWithGoogle(player?: PlayerSchema | null) {
         username: player?.username ?? "Anonymous User",
         uid: player?.uid ?? crypto.randomUUID(),
         role: player?.role ?? "player",
-        createdAt: player?.createdAt ?? new Date(),
-        updatedAt: new Date(),
+        createdAt: player?.createdAt ?? Timestamp.now(),
+        updatedAt: Timestamp.now(),
         stats: {
           totalScore: player?.stats?.totalScore ?? 0,
           gamesPlayed: player?.stats?.gamesPlayed ?? 0,

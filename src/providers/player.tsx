@@ -1,5 +1,5 @@
-import { doc, onSnapshot } from "firebase/firestore";
-import { createContext, useContext, useEffect, useState } from "react";
+import { doc, onSnapshot, Timestamp } from "firebase/firestore";
+import { createContext, useContext, useEffect, useReducer } from "react";
 
 import { firestore } from "@/lib/firebase";
 import { db, zodConverter } from "@/lib/firebase/firestore";
@@ -17,11 +17,30 @@ import {
 
 import { useAuth } from "./auth";
 
-interface PlayerContextType {
+// Define action types
+type PlayerAction =
+  | { type: "SET_PLAYER"; payload: PlayerSchema | null }
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_ERROR"; payload: Error | null }
+  | {
+    type: "UPDATE_PLAYER";
+    payload: Partial<Omit<PlayerSchema, "id" | "uid">>;
+  }
+  | { type: "UPDATE_STATS"; payload: PlayerStatsSchema }
+  | { type: "SET_USERNAME"; payload: string };
+
+interface PlayerState {
   player: PlayerSchema | null;
   loading: boolean;
   error: Error | null;
+}
+
+interface PlayerContextType extends PlayerState {
   updateStats: (gameScore: number, won: boolean) => Promise<void>;
+  setUsername: (username: string) => Promise<void>;
+  updatePlayer: (
+    update: Partial<Omit<PlayerSchema, "id" | "uid">>,
+  ) => Promise<void>;
 }
 
 const PlayerContext = createContext<PlayerContextType>({
@@ -29,7 +48,52 @@ const PlayerContext = createContext<PlayerContextType>({
   loading: false,
   error: null,
   updateStats: async () => {},
+  setUsername: async () => {},
+  updatePlayer: async () => {},
 });
+
+// Define reducer
+function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
+  switch (action.type) {
+    case "SET_PLAYER":
+      return { ...state, player: action.payload };
+    case "SET_LOADING":
+      return { ...state, loading: action.payload };
+    case "SET_ERROR":
+      return { ...state, error: action.payload };
+    case "UPDATE_PLAYER":
+      return {
+        ...state,
+        player: state.player
+          ? { ...state.player, ...action.payload, updatedAt: Timestamp.now() }
+          : null,
+      };
+    case "UPDATE_STATS":
+      return {
+        ...state,
+        player: state.player
+          ? {
+              ...state.player,
+              stats: action.payload,
+              updatedAt: Timestamp.now(),
+            }
+          : null,
+      };
+    case "SET_USERNAME":
+      return {
+        ...state,
+        player: state.player
+          ? {
+              ...state.player,
+              username: action.payload,
+              updatedAt: Timestamp.now(),
+            }
+          : null,
+      };
+    default:
+      return state;
+  }
+}
 
 export interface PlayerProviderProps {
   children: React.ReactNode;
@@ -37,21 +101,23 @@ export interface PlayerProviderProps {
 
 export function PlayerProvider({ children }: PlayerProviderProps) {
   const { user, isAnonymous } = useAuth();
-  const [playerData, setPlayerData] = useState<PlayerSchema | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [state, dispatch] = useReducer(playerReducer, {
+    player: null,
+    loading: true,
+    error: null,
+  });
 
   useEffect(() => {
     if (!user?.uid) {
-      setPlayerData(null);
-      setLoading(false);
+      dispatch({ type: "SET_PLAYER", payload: null });
+      dispatch({ type: "SET_LOADING", payload: false });
       return;
     }
 
     if (isAnonymous) {
       // Handle anonymous user with local storage
       const localStats = getLocalStats();
-      const now = new Date();
+      const now = Timestamp.now();
 
       const defaultStats: PlayerStatsSchema = {
         totalScore: 0,
@@ -70,8 +136,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
         stats: localStats ?? defaultStats,
       };
 
-      setPlayerData(anonymousPlayerData);
-      setLoading(false);
+      dispatch({ type: "SET_PLAYER", payload: anonymousPlayerData });
+      dispatch({ type: "SET_LOADING", payload: false });
       return;
     }
 
@@ -84,24 +150,55 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       playerRef,
       (doc) => {
         if (doc.exists()) {
-          setPlayerData(doc.data() as PlayerSchema);
-          // Clear local stats after successful authentication
+          dispatch({ type: "SET_PLAYER", payload: doc.data() as PlayerSchema });
           clearLocalStats();
         }
         else {
-          setPlayerData(null);
+          dispatch({ type: "SET_PLAYER", payload: null });
         }
-        setLoading(false);
+        dispatch({ type: "SET_LOADING", payload: false });
       },
       (err) => {
         console.error("Error subscribing to user document:", err);
-        setError(err);
-        setLoading(false);
+        dispatch({ type: "SET_ERROR", payload: err });
+        dispatch({ type: "SET_LOADING", payload: false });
       },
     );
 
     return () => unsubscribe();
   }, [user?.uid, isAnonymous]);
+
+  const handleUpdatePlayer = async (
+    update: Partial<Omit<PlayerSchema, "id" | "uid">>,
+  ) => {
+    if (!user?.uid)
+      return;
+
+    try {
+      if (isAnonymous) {
+        dispatch({ type: "UPDATE_PLAYER", payload: update });
+      }
+      else {
+        await db.players.update(user.uid, {
+          ...update,
+          updatedAt: Timestamp.now(),
+        });
+      }
+    }
+    catch (err) {
+      console.error("Error updating player:", err);
+      dispatch({
+        type: "SET_ERROR",
+        payload:
+          err instanceof Error ? err : new Error("Failed to update player"),
+      });
+      throw err;
+    }
+  };
+
+  const handleSetUsername = async (username: string) => {
+    return handleUpdatePlayer({ username });
+  };
 
   const handleUpdateStats = async (gameScore: number, won: boolean) => {
     if (!user?.uid)
@@ -109,8 +206,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
     try {
       if (isAnonymous) {
-        // Update local storage for anonymous users
-        const currentStats: PlayerStatsSchema = playerData?.stats ?? {
+        const currentStats: PlayerStatsSchema = state.player?.stats ?? {
           totalScore: 0,
           gamesPlayed: 0,
           gamesWon: 0,
@@ -126,11 +222,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
         };
 
         saveLocalStats(newStats);
-        setPlayerData(prev => (prev ? { ...prev, stats: newStats } : null));
+        await handleUpdatePlayer({ stats: newStats });
       }
       else {
-        // Update Firestore for authenticated users
-        await db.players.update(user.uid, {
+        await handleUpdatePlayer({
           stats: {
             totalScore: gameScore,
             gamesPlayed: 1,
@@ -142,24 +237,23 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     }
     catch (err) {
       console.error("Error updating user stats:", err);
-      setError(
-        err instanceof Error ? err : new Error("Failed to update stats"),
-      );
+      dispatch({
+        type: "SET_ERROR",
+        payload:
+          err instanceof Error ? err : new Error("Failed to update stats"),
+      });
     }
   };
 
   return (
     <PlayerContext.Provider
       value={{
-        player: playerData,
-        loading,
-        error,
+        ...state,
         updateStats: handleUpdateStats,
+        setUsername: handleSetUsername,
+        updatePlayer: handleUpdatePlayer,
       }}
     >
-      <pre className="border border-red-500 text-xs">
-        {JSON.stringify(playerData, null, 2)}
-      </pre>
       {children}
     </PlayerContext.Provider>
   );

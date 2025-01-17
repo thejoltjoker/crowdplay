@@ -16,14 +16,19 @@ import { useAuth } from "@/providers/auth";
 import { usePlayer } from "@/providers/player";
 
 export function ProfilePage() {
-  const { user, username, setUsername, signOut, isAnonymous } = useAuth();
-  const { player, loading: isLoadingStats, error: statsError } = usePlayer();
+  const { user, signOut, isAnonymous } = useAuth();
+  const {
+    player,
+    loading: isLoadingStats,
+    error: statsError,
+    updatePlayer,
+  } = usePlayer();
   const [isEditingName, setIsEditingName] = useState(false);
-  const [tempUsername, setTempUsername] = useState(username || "");
+  const [tempUsername, setTempUsername] = useState(player?.username || "");
 
   const handleUsernameSubmit = () => {
-    if (tempUsername && tempUsername !== username) {
-      setUsername(tempUsername);
+    if (tempUsername && tempUsername !== player?.username) {
+      updatePlayer({ username: tempUsername });
     }
     setIsEditingName(false);
   };
@@ -80,14 +85,16 @@ export function ProfilePage() {
                     />
                     <Button
                       onClick={handleUsernameSubmit}
-                      disabled={!tempUsername || tempUsername === username}
+                      disabled={!tempUsername || tempUsername === player?.username}
                     >
                       Save
                     </Button>
                   </div>
                 )
               : (
-                  <p className="text-sm text-muted-foreground">{username}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {player?.username}
+                  </p>
                 )}
           </div>
 

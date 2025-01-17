@@ -16,13 +16,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 
-import type { Schema } from "@/lib/schemas";
+import type { QuestionSchema } from "@/lib/schemas";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface QuestionsQueueProps {
-  questions: Schema[];
+  questions: QuestionSchema[];
   onRemoveQuestion: (id: string) => void;
   onReorder: (oldIndex: number, newIndex: number) => void;
   currentQuestionIndex?: number;
@@ -31,7 +31,7 @@ interface QuestionsQueueProps {
 
 interface QuestionItemProps
   extends Pick<QuestionsQueueProps, "onRemoveQuestion" | "isHost"> {
-  question: Schema;
+  question: QuestionSchema;
   index: number;
   currentQuestionIndex: number;
 }

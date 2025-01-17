@@ -9,13 +9,15 @@ import type { GameSchema } from "@/lib/schemas/game";
 import { QuestionTimer } from "@/components/question-timer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { db, joinGame, updateUserStats } from "@/lib/firebase/firestore";
+import { db, joinGame } from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
+import { usePlayer } from "@/providers/player";
 
 function GamePage() {
   const { gameId: gameCode } = useParams();
   const navigate = useNavigate();
-  const { user, username, isAnonymous } = useAuth();
+  const { user, isAnonymous } = useAuth();
+  const { updateStats, player } = usePlayer();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [gameData, setGameData] = useState<GameSchema | null>(null);
@@ -40,7 +42,8 @@ function GamePage() {
     }
 
     const effectiveUsername
-      = username || (isAnonymous ? "Anonymous" : user.displayName || "Unknown");
+      = player?.username
+        || (isAnonymous ? "Anonymous" : user.displayName || "Unknown");
 
     const unsubscribe = onSnapshot(
       db.games.getDocRef(gameCode),
@@ -112,7 +115,7 @@ function GamePage() {
     navigate,
     gameData?.currentQuestionIndex,
     user,
-    username,
+    player?.username,
     isJoining,
     isAnonymous,
   ]);
@@ -168,7 +171,7 @@ function GamePage() {
       // Update local stats for anonymous users after each answer
       if (isAnonymous) {
         // Pass false for isGameFinished since this is just an answer
-        updateUserStats(user.uid, username || "Anonymous", score, true, false);
+        await updateStats(score, false);
       }
     }
     catch (error) {
@@ -202,7 +205,7 @@ function GamePage() {
       // Update local stats for anonymous users with zero score when time is up
       if (isAnonymous) {
         // Pass false for isGameFinished since this is just a timeout
-        updateUserStats(user.uid, username || "Anonymous", 0, true, false);
+        await updateStats(0, false);
       }
 
       setHasAnswered(true);
@@ -251,24 +254,9 @@ function GamePage() {
       await updateDoc(gameRef, updates);
 
       if (isLastQuestion) {
-        // Update stats for all players when game finishes
-        const playerPromises = Object.entries(gameData.players).map(
-          ([playerId, player]) => {
-            const finalScore = finalScores.get(playerId) || 0;
-            // Pass isAnonymous flag based on whether the player is the current user
-            const isPlayerAnonymous
-              = playerId === user.uid ? isAnonymous : false;
-
-            return updateUserStats(
-              playerId,
-              player.name,
-              finalScore,
-              isPlayerAnonymous,
-              isLastQuestion, // Pass isLastQuestion as isGameFinished
-            );
-          },
-        );
-        await Promise.all(playerPromises);
+        // Update stats for current user when game finishes
+        const finalScore = finalScores.get(user.uid) || 0;
+        await updateStats(finalScore, true);
 
         // Only redirect non-host players to results
         const isHost = gameData.players[user.uid]?.isHost;
