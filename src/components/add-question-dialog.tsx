@@ -24,90 +24,74 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useGame } from "@/providers/game";
 
-// Dynamic schema based on number of options
-function createQuestionSchema(optionCount: number) {
-  const optionFields: Record<string, z.ZodString> = {};
-  const validOptions: string[] = [];
+// Update the schema definition to be more explicit
+const formSchema = z.object({
+  questionText: z.string().min(1, "Question text is required"),
+  correctAnswer: z.string().min(1, "Please select a correct answer"),
+  hasTimeLimit: z.boolean().default(false),
+  timeLimit: z.number().min(5).max(120).nullable().default(30),
+  options: z.array(z.string().min(1, "Option text is required")).min(2).max(6),
+});
 
-  for (let i = 0; i < optionCount; i++) {
-    const optionKey = `option${i}`;
-    optionFields[optionKey] = z.string().min(1, `Option ${i + 1} is required`);
-    validOptions.push(i.toString());
-  }
-
-  return z.object({
-    questionText: z.string().min(1, "Question text is required"),
-    ...optionFields,
-    correctAnswer: z
-      .string()
-      .refine(
-        val => val >= "0" && val < optionCount.toString(),
-        "Please select a valid option",
-      ),
-    hasTimeLimit: z.boolean().default(false),
-    timeLimit: z.number().nullable().default(null),
-  });
-}
-
-// Update the QuestionFormValues type to include dynamic options
-interface QuestionFormValues {
-  questionText: string;
-  correctAnswer?: string;
-  hasTimeLimit: boolean;
-  timeLimit: number | null;
-  [key: `option${number}`]: string;
-}
+type FormValues = z.infer<typeof formSchema>;
 
 export interface AddQuestionDialogProps {
-  onSubmit: (values: any) => void;
   trigger?: React.ReactNode;
 }
 
-const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
-  onSubmit,
-  trigger,
-}) => {
+const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({ trigger }) => {
+  const game = useGame();
+  if (game.status !== "ready") return null;
   const [open, setOpen] = React.useState(false);
   const [optionCount, setOptionCount] = React.useState(2);
 
-  const form = useForm<QuestionFormValues>({
-    resolver: zodResolver(createQuestionSchema(optionCount)),
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       questionText: "",
-      correctAnswer: undefined,
+      correctAnswer: "",
       hasTimeLimit: true,
       timeLimit: 30,
+      options: ["", ""],
     },
   });
 
-  const handleSubmit = (values: any) => {
-    onSubmit(values);
+  const handleSubmit = (values: FormValues) => {
+    console.log("values", values);
+    game.state.questions.add([
+      {
+        id: crypto.randomUUID(),
+        text: values.questionText,
+        correctOption: parseInt(values.correctAnswer),
+        timeLimit: values.timeLimit,
+        options: values.options.filter(Boolean),
+      },
+    ]);
     form.reset();
     setOpen(false);
   };
 
   const addOption = () => {
     if (optionCount < 6) {
-      setOptionCount(optionCount + 1);
+      const options = form.getValues("options");
+      form.setValue("options", [...options, ""]);
+      setOptionCount((prev) => prev + 1);
     }
   };
 
   const removeOption = (index: number) => {
     if (optionCount > 2) {
-      // Clear the removed option's value
-      form.setValue(`option${index}`, "");
+      const options = form.getValues("options");
+      const newOptions = options.filter((_, i) => i !== index);
+      form.setValue("options", newOptions);
+
       if (form.getValues("correctAnswer") === index.toString()) {
-        form.setValue("correctAnswer", undefined);
+        form.setValue("correctAnswer", "");
       }
 
-      // Shift all subsequent options up
-      for (let i = index; i < optionCount - 1; i++) {
-        const nextValue = form.getValues(`option${i + 1}`);
-        form.setValue(`option${i}`, nextValue);
-      }
-
-      setOptionCount(optionCount - 1);
+      setOptionCount((prev) => prev - 1);
     }
   };
 
@@ -174,7 +158,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                         min={5}
                         max={120}
                         {...field}
-                        onChange={e => field.onChange(Number(e.target.value))}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
                         value={field.value || 30}
                       />
                     </FormControl>
@@ -187,46 +171,40 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
               />
             )}
 
-            <div className="space-y-4">
-              {Array.from({ length: optionCount }).map((_, index) => (
-                <FormField
-                  key={index}
-                  control={form.control}
-                  name={`option${index}` as keyof QuestionFormValues}
-                  render={({ field }) => (
-                    <FormItem>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <FormLabel>
-                            Option
-                            {index + 1}
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder={`Enter option ${index + 1}`}
-                              {...field}
-                              value={field.value?.toString() ?? ""}
-                            />
-                          </FormControl>
-                        </div>
-                        {optionCount > 2 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="mb-2 self-end"
-                            onClick={() => removeOption(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+            {form.watch("options").map((_, index) => (
+              <FormField
+                key={index}
+                control={form.control}
+                name={`options.${index}`}
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <FormLabel>Option {index + 1}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={`Enter option ${index + 1}`}
+                            {...field}
+                          />
+                        </FormControl>
                       </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              ))}
-            </div>
+                      {optionCount > 2 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="mb-2 self-end"
+                          onClick={() => removeOption(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ))}
 
             {optionCount < 6 && (
               <Button
@@ -261,9 +239,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                             <RadioGroupItem value={index.toString()} />
                           </FormControl>
                           <FormLabel className="font-normal">
-                            Option
-                            {" "}
-                            {index + 1}
+                            Option {index + 1}
                           </FormLabel>
                         </FormItem>
                       ))}

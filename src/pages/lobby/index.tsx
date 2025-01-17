@@ -2,7 +2,7 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import type { QuestionSchema } from "@/lib/schemas";
+import { questionSchema, type QuestionSchema } from "@/lib/schemas";
 
 import AddQuestionDialog from "@/components/add-question-dialog";
 import { GameControls } from "@/components/game-controls";
@@ -59,7 +59,9 @@ function LobbyPage() {
     }
   };
 
-  const handleQuestionAdd = async (formData: any) => {
+  const handleQuestionAdd = async (formData: FormData) => {
+    const data = questionSchema.parse(Object.fromEntries(formData));
+    console.log("data", data);
     if (gameState == null) return;
     setIsLoading(true);
     try {
@@ -70,7 +72,7 @@ function LobbyPage() {
         correctOption: Number.parseInt(formData.correctAnswer),
         timeLimit: formData.timeLimit ? Number(formData.timeLimit) : null,
       };
-      await gameState.question.add(newQuestion);
+      await gameState.questions.add(newQuestion);
       setIsLoading(false);
     } catch (error) {
       console.error("Error adding question:", error);
@@ -83,7 +85,7 @@ function LobbyPage() {
     if (gameState == null || gameData == null) return;
 
     try {
-      gameState.question.remove(questionId);
+      gameState.questions.remove(questionId);
     } catch (error) {
       console.error("Error removing question:", error);
       setError("Error removing question");
@@ -92,7 +94,7 @@ function LobbyPage() {
 
   const handleQuestionReorder = async (oldIndex: number, newIndex: number) => {
     try {
-      gameState.question.reorder(oldIndex, newIndex);
+      gameState.questions.reorder(oldIndex, newIndex);
     } catch (error) {
       console.error("Error reordering questions:", error);
       setError("Error reordering questions");
@@ -103,7 +105,7 @@ function LobbyPage() {
     if (gameState == null) return;
 
     try {
-      gameState.question.next();
+      gameState.questions.next();
     } catch (error) {
       console.error("Error moving to next question:", error);
       setError("Error moving to next question");

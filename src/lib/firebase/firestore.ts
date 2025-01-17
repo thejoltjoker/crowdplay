@@ -295,6 +295,11 @@ export class GameState {
     });
   }
 
+  async getDoc() {
+    this.doc = await db.games.getDoc(this.gameId);
+    return this.doc;
+  }
+
   settings = {
     allowLateJoin: async (allow: boolean) => {
       await updateDoc(this.ref, {
@@ -303,13 +308,17 @@ export class GameState {
     },
   };
 
-  question = {
-    add: async (question: QuestionSchema) => {
-      if (!this.doc?.exists()) throw new Error("Game not found");
-      const game = this.doc.data();
+  questions = {
+    add: async (questions: QuestionSchema[]) => {
+      const doc = await this.getDoc();
+      if (!doc?.exists()) throw new Error("Game not found");
+      const game = doc.data();
+
+      console.log("game", game);
+      console.log("questions", questions);
 
       await updateDoc(this.ref, {
-        questions: [...game.questions, question],
+        questions: [...game.questions, ...questions],
       });
     },
 

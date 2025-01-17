@@ -21,6 +21,8 @@ import type { QuestionSchema } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useGame } from "@/providers/game";
+import { isGameHost } from "@/lib/helpers/game-state";
+import { usePlayer } from "@/providers/player";
 
 interface QuestionsQueueProps {
   questions: QuestionSchema[];
@@ -98,7 +100,10 @@ function QuestionItem({
 }
 
 export const QuestionsQueue: React.FC<QuestionsQueueProps> = (props) => {
-  const { gameData, gameState } = useGame();
+  const game = useGame();
+  const { player } = usePlayer();
+  if (game.status !== "ready") return null;
+  const { data: gameData, state: gameState } = game;
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -127,7 +132,7 @@ export const QuestionsQueue: React.FC<QuestionsQueueProps> = (props) => {
       oldIndex > gameData?.currentQuestionIndex &&
       newIndex > gameData?.currentQuestionIndex
     ) {
-      gameState?.question.reorder(oldIndex, newIndex);
+      gameState.questions.reorder(oldIndex, newIndex);
     }
   };
 
@@ -149,7 +154,7 @@ export const QuestionsQueue: React.FC<QuestionsQueueProps> = (props) => {
               index={index}
               currentQuestionIndex={gameData?.currentQuestionIndex}
               onRemoveQuestion={props.onRemoveQuestion}
-              isHost={isGameHost(gameData, userId)}
+              isHost={isGameHost(gameData, player?.uid)}
             />
           ))}
         </ul>
