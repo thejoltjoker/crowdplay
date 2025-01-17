@@ -87,9 +87,9 @@ export function LandingPage() {
   };
 
   return (
-    <div className=" mx-auto p-4">
-      <h1 className="text-4xl font-bold text-center pt-4 pb-8">Crowdplay</h1>
-      <Card className="mx-auto max-w-screen-sm">
+    <div className="w-full max-w-screen-md p-4">
+      <h1 className="pb-8 pt-4 text-center text-4xl font-bold">Crowdplay</h1>
+      <Card className="">
         <CardHeader>
           <CardTitle>Welcome to CrowdPlay</CardTitle>
           <CardDescription>
@@ -98,7 +98,7 @@ export function LandingPage() {
               : "Join a multiplayer quiz game and compete with friends!"}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           {/* Username Section - Only show if not set */}
           {!username && (
             <div className="space-y-2">
@@ -147,7 +147,7 @@ export function LandingPage() {
               </div>
 
               {isLoading ? (
-                <div className="text-center py-4 text-muted-foreground">
+                <div className="py-4 text-center text-muted-foreground">
                   Loading games...
                 </div>
               ) : activeGames.length > 0 ? (
@@ -155,7 +155,7 @@ export function LandingPage() {
                   {activeGames.map((game) => {
                     const playerCount = Object.keys(game.players).length;
                     const hostName = Object.values(game.players).find(
-                      (p) => p.isHost
+                      (p) => p.isHost,
                     )?.name;
                     const currentPlayer = user
                       ? game.players[user.uid]
@@ -166,11 +166,11 @@ export function LandingPage() {
                     return (
                       <div
                         key={game.id}
-                        className="flex items-center justify-between p-3 border rounded-lg"
+                        className="flex items-center justify-between rounded-lg border p-3"
                       >
                         <div className="space-y-1">
                           <div className="font-medium">Game #{game.id}</div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Users className="h-3 w-3" />
                             {playerCount} players • Host:
                             {hostName}
@@ -198,7 +198,7 @@ export function LandingPage() {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-4 text-muted-foreground">
+                <div className="py-4 text-center text-muted-foreground">
                   No active games found
                 </div>
               )}

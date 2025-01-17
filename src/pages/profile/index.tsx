@@ -56,8 +56,7 @@ export function ProfilePage() {
           setStats(updatedStats);
           // Save the updated stats back to local storage
           saveLocalStats(updatedStats);
-        }
-        else {
+        } else {
           const initialStats: UserStats = {
             userId: user.uid,
             displayName: username || "Anonymous",
@@ -83,8 +82,7 @@ export function ProfilePage() {
           setStats(statsDoc.data());
           // Clear local stats after successful transfer
           clearLocalStats();
-        }
-        else {
+        } else {
           // Initialize stats for new users
           setStats({
             userId: user.uid,
@@ -95,12 +93,10 @@ export function ProfilePage() {
             lastGamePlayed: undefined,
           });
         }
-      }
-      catch (error) {
+      } catch (error) {
         console.error("Error fetching user stats:", error);
         setStatsError("Failed to load stats. Please try again later.");
-      }
-      finally {
+      } finally {
         setIsLoadingStats(false);
       }
     };
@@ -118,14 +114,13 @@ export function ProfilePage() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogleAndTransferStats();
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error signing in with Google:", error);
     }
   };
 
   return (
-    <div className=" mx-auto p-4 space-y-4">
+    <div className="w-full max-w-screen-md space-y-4 p-4">
       <Card>
         <CardHeader>
           <CardTitle>Profile</CardTitle>
@@ -149,31 +144,29 @@ export function ProfilePage() {
                 <Pencil className="h-4 w-4" />
               </Button>
             </div>
-            {isEditingName
-              ? (
-                  <div className="flex space-x-2">
-                    <Input
-                      value={tempUsername}
-                      onChange={e => setTempUsername(e.target.value)}
-                      placeholder="Enter a username"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleUsernameSubmit();
-                        }
-                      }}
-                      autoFocus
-                    />
-                    <Button
-                      onClick={handleUsernameSubmit}
-                      disabled={!tempUsername || tempUsername === username}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                )
-              : (
-                  <p className="text-sm text-muted-foreground">{username}</p>
-                )}
+            {isEditingName ? (
+              <div className="flex space-x-2">
+                <Input
+                  value={tempUsername}
+                  onChange={(e) => setTempUsername(e.target.value)}
+                  placeholder="Enter a username"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleUsernameSubmit();
+                    }
+                  }}
+                  autoFocus
+                />
+                <Button
+                  onClick={handleUsernameSubmit}
+                  disabled={!tempUsername || tempUsername === username}
+                >
+                  Save
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{username}</p>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -191,18 +184,16 @@ export function ProfilePage() {
           )}
 
           <div className="pt-4">
-            {isAnonymous
-              ? (
-                  <Button className="w-full" onClick={handleGoogleSignIn}>
-                    Sign in with Google
-                  </Button>
-                )
-              : (
-                  <Button variant="outline" className="w-full" onClick={signOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
-                  </Button>
-                )}
+            {isAnonymous ? (
+              <Button className="w-full" onClick={handleGoogleSignIn}>
+                Sign in with Google
+              </Button>
+            ) : (
+              <Button variant="outline" className="w-full" onClick={signOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign Out
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -213,7 +204,7 @@ export function ProfilePage() {
             <Trophy className="h-5 w-5 text-yellow-500" />
             Game Statistics
             {isAnonymous && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
                 (Local Only)
               </span>
             )}
@@ -225,54 +216,48 @@ export function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoadingStats
-            ? (
-                <div className="text-sm text-muted-foreground">
-                  Loading stats...
-                </div>
-              )
-            : statsError
-              ? (
-                  <div className="text-sm text-destructive">{statsError}</div>
-                )
-              : stats
-                ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Games Played</p>
-                        <p className="text-2xl font-bold">{stats.gamesPlayed}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Total Score</p>
-                        <p className="text-2xl font-bold">{stats.totalScore}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Average Score</p>
-                        <p className="text-2xl font-bold">
-                          {stats.averageScore.toFixed(1)}
-                        </p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Last Game</p>
-                        <p className="text-2xl font-bold">
-                          {stats.lastGamePlayed
-                            ? Temporal.Instant.fromEpochMilliseconds(
-                                stats.lastGamePlayed,
-                              )
-                                .toZonedDateTimeISO(Temporal.Now.timeZoneId())
-                                .toPlainDate()
-                                .toString()
-                            : "Never"}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                : (
-                    <div className="text-sm text-muted-foreground">
-                      No game statistics available yet. Play some games to see your
-                      stats!
-                    </div>
-                  )}
+          {isLoadingStats ? (
+            <div className="text-sm text-muted-foreground">
+              Loading stats...
+            </div>
+          ) : statsError ? (
+            <div className="text-sm text-destructive">{statsError}</div>
+          ) : stats ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Games Played</p>
+                <p className="text-2xl font-bold">{stats.gamesPlayed}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Total Score</p>
+                <p className="text-2xl font-bold">{stats.totalScore}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Average Score</p>
+                <p className="text-2xl font-bold">
+                  {stats.averageScore.toFixed(1)}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Last Game</p>
+                <p className="text-2xl font-bold">
+                  {stats.lastGamePlayed
+                    ? Temporal.Instant.fromEpochMilliseconds(
+                        stats.lastGamePlayed,
+                      )
+                        .toZonedDateTimeISO(Temporal.Now.timeZoneId())
+                        .toPlainDate()
+                        .toString()
+                    : "Never"}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground">
+              No game statistics available yet. Play some games to see your
+              stats!
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

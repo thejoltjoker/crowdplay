@@ -11,7 +11,7 @@ import ResultsPage from "@/pages/results";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen pb-16 md:pb-0">
+    <div className="flex min-h-screen w-full flex-col items-center justify-stretch gap-4 pb-16 md:pb-0">
       <NavBar />
       {children}
     </div>
@@ -79,5 +79,5 @@ export const router = createBrowserRouter(
     future: {
       v7_relativeSplatPath: true,
     },
-  }
+  },
 );
