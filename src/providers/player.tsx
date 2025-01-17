@@ -8,7 +8,6 @@ import {
   getLocalStats,
   saveLocalStats,
 } from "@/lib/helpers/local-stats";
-import { randomString } from "@/lib/helpers/random-string";
 import {
   type PlayerSchema,
   playerSchema,
@@ -215,7 +214,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
           totalScore: currentStats.totalScore + gameScore,
           gamesPlayed: currentStats.gamesPlayed + 1,
           gamesWon: currentStats.gamesWon + (won ? 1 : 0),
-          lastGamePlayed: new Date(),
+          lastGamePlayed: Timestamp.now(),
         };
 
         saveLocalStats(newStats);
@@ -226,7 +225,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
             totalScore: gameScore,
             gamesPlayed: 1,
             gamesWon: won ? 1 : 0,
-            lastGamePlayed: new Date(),
+            lastGamePlayed: Timestamp.now(),
           },
         });
       }

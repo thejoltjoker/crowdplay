@@ -5,13 +5,16 @@ import { ThemeProvider } from "@/providers/theme";
 import { router } from "@/router";
 
 import { PlayerProvider } from "./providers/player";
+import { GameProvider } from "./providers/game";
 
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <AuthProvider>
         <PlayerProvider>
-          <RouterProvider router={router} />
+          <GameProvider>
+            <RouterProvider router={router} />
+          </GameProvider>
         </PlayerProvider>
       </AuthProvider>
     </ThemeProvider>

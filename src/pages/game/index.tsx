@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import type { QuestionSchema } from "@/lib/schemas";
-import type { GameSchema } from "@/lib/schemas/game";
 
 import { QuestionTimer } from "@/components/question-timer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db, joinGame } from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
+import { useGame } from "@/providers/game";
 import { usePlayer } from "@/providers/player";
 
 function GamePage() {
@@ -18,39 +18,35 @@ function GamePage() {
   const navigate = useNavigate();
   const { user, isAnonymous } = useAuth();
   const { updateStats, player } = usePlayer();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [gameData, setGameData] = useState<GameSchema | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState<QuestionSchema | null>(
-    null,
-  );
+  const { state, dispatch } = useGame();
   const [hasAnswered, setHasAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isJoining, setIsJoining] = useState(false);
 
+  const currentQuestion = state.questions[state.currentQuestionIndex];
+
   useEffect(() => {
     if (!gameCode) {
-      setLoading(false);
-      setError("Game code is missing");
+      dispatch({ type: "SET_ERROR", payload: "Game code is missing" });
       return;
     }
 
     if (!user) {
-      setLoading(false);
-      setError("Not signed in");
+      dispatch({ type: "SET_ERROR", payload: "Not signed in" });
       return;
     }
 
-    const effectiveUsername
-      = player?.username
-        || (isAnonymous ? "Anonymous" : user.displayName || "Unknown");
+    dispatch({ type: "SET_LOADING", payload: true });
+
+    const effectiveUsername =
+      player?.username ||
+      (isAnonymous ? "Anonymous" : user.displayName || "Unknown");
 
     const unsubscribe = onSnapshot(
       db.games.getDocRef(gameCode),
       async (doc) => {
         if (!doc.exists()) {
-          setError("Game not found");
-          setLoading(false);
+          dispatch({ type: "SET_ERROR", payload: "Game not found" });
           return;
         }
 
@@ -59,42 +55,33 @@ function GamePage() {
         // If user is not in the game yet, check if late join is allowed
         if (!data.players[user.uid] && !isJoining) {
           if (!data.allowLateJoin && data.status !== "waiting") {
-            setError("Late joining is not allowed for this game");
-            setLoading(false);
+            dispatch({
+              type: "SET_ERROR",
+              payload: "Late joining is not allowed for this game",
+            });
             return;
           }
 
           try {
             setIsJoining(true);
             await joinGame(gameCode, user.uid, effectiveUsername);
-            // Don't set game data here, it will be updated by the next snapshot
             return;
-          }
-          catch (error) {
+          } catch (error) {
             console.error("Error joining game:", error);
-            setError("Error joining game");
-            setLoading(false);
+            dispatch({ type: "SET_ERROR", payload: "Error joining game" });
             setIsJoining(false);
             return;
           }
         }
 
-        setGameData(data);
+        dispatch({ type: "SET_GAME", payload: data });
         setIsJoining(false);
 
         // Reset states when question changes
-        if (data.currentQuestionIndex !== gameData?.currentQuestionIndex) {
+        if (data.currentQuestionIndex !== state.currentQuestionIndex) {
           setHasAnswered(false);
           setSelectedAnswer(null);
         }
-
-        // Set current question
-        if (data.questions[data.currentQuestionIndex]) {
-          const question = data.questions[data.currentQuestionIndex];
-          setCurrentQuestion(question);
-        }
-
-        setLoading(false);
 
         // If game is finished, only redirect non-host players to results
         if (data.status === "finished" && !data.players[user.uid]?.isHost) {
@@ -103,8 +90,7 @@ function GamePage() {
       },
       (error) => {
         console.error("Error fetching game:", error);
-        setError("Error fetching game data");
-        setLoading(false);
+        dispatch({ type: "SET_ERROR", payload: "Error fetching game data" });
         setIsJoining(false);
       },
     );
@@ -113,21 +99,22 @@ function GamePage() {
   }, [
     gameCode,
     navigate,
-    gameData?.currentQuestionIndex,
+    state.currentQuestionIndex,
     user,
     player?.username,
     isJoining,
     isAnonymous,
+    dispatch,
   ]);
 
   const handleAnswer = async (optionIndex: number) => {
     if (
-      !gameCode
-      || !user
-      || !gameData
-      || !currentQuestion
-      || hasAnswered
-      || !gameData.currentQuestionStartedAt
+      !gameCode ||
+      !user ||
+      !state.id ||
+      !currentQuestion ||
+      hasAnswered ||
+      !state.currentQuestionStartedAt
     ) {
       return;
     }
@@ -136,7 +123,7 @@ function GamePage() {
       const gameRef = db.games.getDocRef(gameCode);
 
       // Calculate response time in milliseconds
-      const responseTime = Date.now() - gameData.currentQuestionStartedAt;
+      const responseTime = Date.now() - state.currentQuestionStartedAt;
       const isCorrect = optionIndex === currentQuestion.correctOption;
 
       // Calculate score based on time and correctness
@@ -150,8 +137,7 @@ function GamePage() {
             1 - timeElapsedSeconds / currentQuestion.timeLimit,
           );
           score = Math.round(100 * timeRatio);
-        }
-        else {
+        } else {
           // For untimed questions, score is 100 if correct
           score = 100;
         }
@@ -168,67 +154,81 @@ function GamePage() {
         [`players.${user.uid}.lastQuestionScore`]: score,
       });
 
+      dispatch({
+        type: "UPDATE_PLAYER_ANSWER",
+        payload: {
+          playerId: user.uid,
+          isCorrect,
+          score,
+          responseTime,
+        },
+      });
+
       // Update local stats for anonymous users after each answer
       if (isAnonymous) {
-        // Pass false for isGameFinished since this is just an answer
         await updateStats(score, false);
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error submitting answer:", error);
-      setError("Error submitting answer");
+      dispatch({ type: "SET_ERROR", payload: "Error submitting answer" });
     }
   };
 
   const handleTimeUp = async () => {
     if (
-      !gameCode
-      || !user
-      || !gameData
-      || !currentQuestion
-      || hasAnswered
-      || !gameData.currentQuestionStartedAt
+      !gameCode ||
+      !user ||
+      !state.id ||
+      !currentQuestion ||
+      hasAnswered ||
+      !state.currentQuestionStartedAt
     ) {
       return;
     }
 
     try {
       const gameRef = db.games.getDocRef(gameCode);
+      const responseTime = Date.now() - state.currentQuestionStartedAt;
+
       await updateDoc(gameRef, {
         [`players.${user.uid}.hasAnswered`]: true,
         [`players.${user.uid}.lastAnswerCorrect`]: false,
         [`players.${user.uid}.lastQuestionScore`]: 0,
-        [`players.${user.uid}.responseTime`]:
-          Date.now() - gameData.currentQuestionStartedAt,
+        [`players.${user.uid}.responseTime`]: responseTime,
+      });
+
+      dispatch({
+        type: "UPDATE_PLAYER_ANSWER",
+        payload: {
+          playerId: user.uid,
+          isCorrect: false,
+          score: 0,
+          responseTime,
+        },
       });
 
       // Update local stats for anonymous users with zero score when time is up
       if (isAnonymous) {
-        // Pass false for isGameFinished since this is just a timeout
         await updateStats(0, false);
       }
 
       setHasAnswered(true);
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error handling time up:", error);
-      setError("Error handling time up");
+      dispatch({ type: "SET_ERROR", payload: "Error handling time up" });
     }
   };
 
   const handleNextQuestion = async () => {
-    if (!gameCode || !user || !gameData || !currentQuestion)
-      return;
+    if (!gameCode || !user || !state.id || !currentQuestion) return;
 
     try {
-      const gameRef = db.games.getDocRef(gameCode);
-      const nextQuestionIndex = gameData.currentQuestionIndex + 1;
-      const isLastQuestion = nextQuestionIndex >= gameData.questions.length;
+      const nextQuestionIndex = state.currentQuestionIndex + 1;
+      const isLastQuestion = nextQuestionIndex >= state.questions.length;
 
       // Calculate final scores for all players
       const finalScores = new Map<string, number>();
-      Object.entries(gameData.players).forEach(([playerId, player]) => {
-        // Include current score and last question score if answered
+      Object.entries(state.players).forEach(([playerId, player]) => {
         const currentScore = player.score || 0;
         const lastQuestionScore = player.hasAnswered
           ? player.lastQuestionScore || 0
@@ -245,13 +245,14 @@ function GamePage() {
       };
 
       // Update scores in the game document
-      Object.entries(gameData.players).forEach(([playerId]) => {
+      Object.entries(state.players).forEach(([playerId]) => {
         const finalScore = finalScores.get(playerId) || 0;
         updates[`players.${playerId}.score`] = finalScore;
         updates[`players.${playerId}.hasAnswered`] = false;
       });
 
-      await updateDoc(gameRef, updates);
+      await updateDoc(db.games.getDocRef(gameCode), updates);
+      dispatch({ type: "NEXT_QUESTION" });
 
       if (isLastQuestion) {
         // Update stats for current user when game finishes
@@ -259,21 +260,20 @@ function GamePage() {
         await updateStats(finalScore, true);
 
         // Only redirect non-host players to results
-        const isHost = gameData.players[user.uid]?.isHost;
+        const isHost = state.players[user.uid]?.isHost;
         if (!isHost) {
           // Small delay to ensure Firestore updates are processed
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
           navigate(`/results/${gameCode}`);
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error moving to next question:", error);
-      setError("Error moving to next question");
+      dispatch({ type: "SET_ERROR", payload: "Error moving to next question" });
     }
   };
 
-  if (loading) {
+  if (state.isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -281,15 +281,15 @@ function GamePage() {
     );
   }
 
-  if (error) {
+  if (state.error) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <p className="text-destructive">{error}</p>
+        <p className="text-destructive">{state.error}</p>
       </div>
     );
   }
 
-  if (!gameData || !currentQuestion) {
+  if (!state.id || !gameCode || !currentQuestion) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-destructive">Game or question not found</p>
@@ -297,12 +297,10 @@ function GamePage() {
     );
   }
 
-  const isHost
-    = Object.values(gameData.players).find(p => p.isHost)?.id === user?.uid;
-  const activePlayers = Object.values(gameData.players).filter(
-    p => !p.isHost,
-  );
-  const answeredCount = activePlayers.filter(p => p.hasAnswered).length;
+  const isHost =
+    Object.values(state.players).find((p) => p.isHost)?.id === user?.uid;
+  const activePlayers = Object.values(state.players).filter((p) => !p.isHost);
+  const answeredCount = activePlayers.filter((p) => p.hasAnswered).length;
   const totalPlayers = activePlayers.length;
 
   return (
@@ -310,13 +308,8 @@ function GamePage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Question
-            {" "}
-            {gameData.currentQuestionIndex + 1}
-            {" "}
-            of
-            {" "}
-            {gameData.questions.length}
+            Question {state.currentQuestionIndex + 1} of{" "}
+            {state.questions.length}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -346,10 +339,10 @@ function GamePage() {
             )}
           </div>
 
-          {currentQuestion.timeLimit && gameData.currentQuestionStartedAt && (
+          {currentQuestion.timeLimit && state.currentQuestionStartedAt && (
             <QuestionTimer
               timeLimit={currentQuestion.timeLimit}
-              startedAt={gameData.currentQuestionStartedAt}
+              startedAt={state.currentQuestionStartedAt}
               onTimeUp={handleTimeUp}
             />
           )}
