@@ -8,6 +8,7 @@ import LeaderboardPage from "@/pages/leaderboard";
 import LobbyPage from "@/pages/lobby";
 import ProfilePage from "@/pages/profile";
 import ResultsPage from "@/pages/results";
+import { GameProvider } from "./providers/game";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -49,7 +50,9 @@ export const router = createBrowserRouter(
       element: (
         <AuthGuard>
           <AppLayout>
-            <LobbyPage />
+            <GameProvider>
+              <LobbyPage />
+            </GameProvider>
           </AppLayout>
         </AuthGuard>
       ),

@@ -20,6 +20,7 @@ import type { QuestionSchema } from "@/lib/schemas";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useGame } from "@/providers/game";
 
 interface QuestionsQueueProps {
   questions: QuestionSchema[];
@@ -43,8 +44,8 @@ function QuestionItem({
   onRemoveQuestion,
   isHost,
 }: QuestionItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, active }
-    = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, active } =
+    useSortable({
       id: question.id,
       disabled: !isHost || index <= currentQuestionIndex,
     });
@@ -79,9 +80,7 @@ function QuestionItem({
         <div>
           <p className="font-medium">{question.text}</p>
           <p className="text-sm text-muted-foreground">
-            {question.options.length}
-            {" "}
-            options
+            {question.options.length} options
             {question.timeLimit && ` · ${question.timeLimit}s`}
           </p>
         </div>
@@ -98,13 +97,9 @@ function QuestionItem({
   );
 }
 
-export function QuestionsQueue({
-  questions,
-  onRemoveQuestion,
-  onReorder,
-  currentQuestionIndex = -1,
-  isHost = false,
-}: QuestionsQueueProps) {
+export const QuestionsQueue: React.FC<QuestionsQueueProps> = (props) => {
+  const { gameData, gameState } = useGame();
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -112,7 +107,7 @@ export function QuestionsQueue({
     }),
   );
 
-  if (!questions.length) {
+  if (!gameData?.questions.length) {
     return (
       <p className="py-4 text-center text-sm text-muted-foreground">
         No questions added yet
@@ -123,14 +118,16 @@ export function QuestionsQueue({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (!over || active.id === over.id)
-      return;
+    if (!over || active.id === over.id) return;
 
-    const oldIndex = questions.findIndex(q => q.id === active.id);
-    const newIndex = questions.findIndex(q => q.id === over.id);
+    const oldIndex = gameData?.questions.findIndex((q) => q.id === active.id);
+    const newIndex = gameData?.questions.findIndex((q) => q.id === over.id);
 
-    if (oldIndex > currentQuestionIndex && newIndex > currentQuestionIndex) {
-      onReorder(oldIndex, newIndex);
+    if (
+      oldIndex > gameData?.currentQuestionIndex &&
+      newIndex > gameData?.currentQuestionIndex
+    ) {
+      gameState?.question.reorder(oldIndex, newIndex);
     }
   };
 
@@ -141,24 +138,24 @@ export function QuestionsQueue({
       onDragEnd={handleDragEnd}
     >
       <SortableContext
-        items={questions.map(q => q.id)}
+        items={gameData?.questions.map((q) => q.id)}
         strategy={verticalListSortingStrategy}
       >
         <ul className="relative space-y-2">
-          {questions.map((question, index) => (
+          {gameData?.questions.map((question, index) => (
             <QuestionItem
               key={question.id}
               question={question}
               index={index}
-              currentQuestionIndex={currentQuestionIndex}
-              onRemoveQuestion={onRemoveQuestion}
-              isHost={isHost}
+              currentQuestionIndex={gameData?.currentQuestionIndex}
+              onRemoveQuestion={props.onRemoveQuestion}
+              isHost={isGameHost(gameData, userId)}
             />
           ))}
         </ul>
       </SortableContext>
     </DndContext>
   );
-}
+};
 
 export default QuestionsQueue;

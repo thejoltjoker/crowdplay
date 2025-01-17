@@ -3,8 +3,6 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import type { QuestionSchema } from "@/lib/schemas";
-
 import { QuestionTimer } from "@/components/question-timer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +16,7 @@ function GamePage() {
   const navigate = useNavigate();
   const { user, isAnonymous } = useAuth();
   const { updateStats, player } = usePlayer();
-  const { state, dispatch } = useGame();
+  const { gameState: state, dispatch } = useGame();
   const [hasAnswered, setHasAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isJoining, setIsJoining] = useState(false);

@@ -14,9 +14,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { signInWithGoogle } from "@/lib/firebase/auth";
-import { createGame, getActiveGames, joinGame } from "@/lib/firebase/firestore";
+import {
+  createGame,
+  GameState,
+  getActiveGames,
+  joinGame,
+} from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
 import { usePlayer } from "@/providers/player";
+import { generateGameCode } from "@/lib/helpers/generate-game-code";
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -30,11 +36,9 @@ export function LandingPage() {
       try {
         const games = await getActiveGames();
         setActiveGames(games);
-      }
-      catch (error) {
+      } catch (error) {
         console.error("Error loading active games:", error);
-      }
-      finally {
+      } finally {
         setIsLoading(false);
       }
     };
@@ -46,25 +50,39 @@ export function LandingPage() {
   }, []);
 
   const handleCreateGame = async () => {
-    if (!user)
-      return;
+    if (!user) return;
     try {
-      const code = await createGame(user.uid, player?.username ?? "Steve");
-      navigate(`/lobby/${code}`);
-    }
-    catch (error) {
+      const game = await GameState.fromObj({
+        id: generateGameCode(),
+        status: "waiting",
+        players: {},
+        questions: [],
+        currentQuestionIndex: 0,
+        allowLateJoin: false,
+      });
+      await game.player.add({
+        id: user.uid,
+        name: player?.username ?? "Steve",
+        isHost: true,
+        score: 0,
+        hasAnswered: false,
+        lastAnswerCorrect: false,
+        lastQuestionScore: 0,
+        responseTime: 0,
+      });
+
+      navigate(`/lobby/${game.gameId}`);
+    } catch (error) {
       console.error("Error creating game:", error);
     }
   };
 
   const handleJoinGame = async (code: string) => {
-    if (!user)
-      return;
+    if (!user) return;
     try {
       await joinGame(code, user.uid, player?.username ?? "Steve");
       navigate(`/lobby/${code}`);
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error joining game:", error);
     }
   };
@@ -72,8 +90,7 @@ export function LandingPage() {
   const handleGoogleSignIn = async () => {
     try {
       await signInWithGoogle(player);
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error signing in with Google:", error);
     }
   };
@@ -107,70 +124,62 @@ export function LandingPage() {
                   </Button>
                 </div>
 
-                {isLoading
-                  ? (
-                      <div className="py-4 text-center text-muted-foreground">
-                        Loading games...
-                      </div>
-                    )
-                  : activeGames.length > 0
-                    ? (
-                        <div className="space-y-2">
-                          {activeGames.map((game) => {
-                            const playerCount = Object.keys(game.players).length;
-                            const hostName = Object.values(game.players).find(
-                              p => p.isHost,
-                            )?.name;
-                            const currentPlayer = user
-                              ? game.players[user.uid]
-                              : undefined;
-                            const isHost = Boolean(currentPlayer?.isHost);
-                            const hasJoined = currentPlayer !== undefined;
+                {isLoading ? (
+                  <div className="py-4 text-center text-muted-foreground">
+                    Loading games...
+                  </div>
+                ) : activeGames.length > 0 ? (
+                  <div className="space-y-2">
+                    {activeGames.map((game) => {
+                      const playerCount = Object.keys(game.players).length;
+                      const hostName = Object.values(game.players).find(
+                        (p) => p.isHost,
+                      )?.name;
+                      const currentPlayer = user
+                        ? game.players[user.uid]
+                        : undefined;
+                      const isHost = Boolean(currentPlayer?.isHost);
+                      const hasJoined = currentPlayer !== undefined;
 
-                            return (
-                              <div
-                                key={game.id}
-                                className="flex items-center justify-between rounded-lg border p-3"
-                              >
-                                <div className="space-y-1">
-                                  <div className="font-medium">
-                                    Game #
-                                    {game.id}
-                                  </div>
-                                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                    <Users className="h-3 w-3" />
-                                    {playerCount}
-                                    {" "}
-                                    players • Host:
-                                    {hostName}
-                                  </div>
-                                </div>
-                                {user && (
-                                  <Button
-                                    size="sm"
-                                    onClick={() =>
-                                      hasJoined
-                                        ? navigate(`/lobby/${game.id}`)
-                                        : handleJoinGame(game.id)}
-                                    disabled={false}
-                                  >
-                                    {isHost
-                                      ? "Go to Lobby"
-                                      : hasJoined
-                                        ? "Go to Game"
-                                        : "Join"}
-                                  </Button>
-                                )}
-                              </div>
-                            );
-                          })}
+                      return (
+                        <div
+                          key={game.id}
+                          className="flex items-center justify-between rounded-lg border p-3"
+                        >
+                          <div className="space-y-1">
+                            <div className="font-medium">Game #{game.id}</div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Users className="h-3 w-3" />
+                              {playerCount} players • Host:
+                              {hostName}
+                            </div>
+                          </div>
+                          {user && (
+                            <Button
+                              size="sm"
+                              onClick={() =>
+                                hasJoined
+                                  ? navigate(`/lobby/${game.id}`)
+                                  : handleJoinGame(game.id)
+                              }
+                              disabled={false}
+                            >
+                              {isHost
+                                ? "Go to Lobby"
+                                : hasJoined
+                                  ? "Go to Game"
+                                  : "Join"}
+                            </Button>
+                          )}
                         </div>
-                      )
-                    : (
-                        <div className="py-4 text-center text-muted-foreground">
-                          No active games found
-                        </div>
-                      )}
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-4 text-center text-muted-foreground">
+                    No active games found
+                  </div>
+                )}
               </div>
             )}
 

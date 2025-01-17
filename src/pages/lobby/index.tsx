@@ -1,10 +1,8 @@
-import { onSnapshot } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import type { QuestionSchema } from "@/lib/schemas";
-import type { GameSchema } from "@/lib/schemas/game";
 
 import AddQuestionDialog from "@/components/add-question-dialog";
 import { GameControls } from "@/components/game-controls";
@@ -20,274 +18,116 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { db, joinGame } from "@/lib/firebase/firestore";
 import { isGameHost } from "@/lib/helpers/game-state";
 import { useAuth } from "@/providers/auth";
 import { useGame } from "@/providers/game";
-import { usePlayer } from "@/providers/player";
+import LoadingScreen from "@/components/loading-screen";
+import ErrorScreen from "@/components/error-screen";
 
 function LobbyPage() {
   const { gameId: gameCode } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { player } = usePlayer();
-  const { state, dispatch } = useGame();
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const game = useGame();
 
-  useEffect(() => {
-    if (!gameCode) return;
+  if (game.status === "loading") return <LoadingScreen />;
+  if (game.status === "error") return <ErrorScreen error={game.error} />;
 
-    dispatch({ type: "SET_LOADING", payload: true });
-
-    const unsubscribe = onSnapshot(
-      db.games.getDocRef(gameCode),
-      async (doc) => {
-        if (!doc.exists()) {
-          dispatch({ type: "SET_ERROR", payload: "Game not found" });
-          return;
-        }
-
-        const data = doc.data();
-
-        // Try to join the game if not already in it and not the host
-        if (user && player?.username && !data.players[user.uid]) {
-          try {
-            if (data.status === "waiting" || data.allowLateJoin) {
-              await joinGame(gameCode, user.uid, player.username);
-              return;
-            } else {
-              dispatch({
-                type: "SET_ERROR",
-                payload:
-                  "Game has already started and late joining is not allowed",
-              });
-              return;
-            }
-          } catch (error) {
-            console.error("Error joining game:", error);
-            dispatch({
-              type: "SET_ERROR",
-              payload:
-                error instanceof Error ? error.message : "Error joining game",
-            });
-            return;
-          }
-        }
-
-        dispatch({ type: "SET_GAME", payload: data });
-
-        // Handle redirection based on game status and user role
-        if (data.status === "playing") {
-          const isHost = isGameHost(data, user?.uid);
-          if (!isHost) {
-            navigate(`/game/${gameCode}`);
-          }
-        }
-      },
-    );
-
-    return () => unsubscribe();
-  }, [gameCode, navigate, user?.uid, player?.username, dispatch]);
-
-  // Fetch available questions
-  useEffect(() => {
-    const loadQuestions = async () => {
-      try {
-        dispatch({ type: "SET_LOADING", payload: true });
-        if (!gameCode) throw new Error("Game code is required");
-        const game = await db.games.getOne(gameCode);
-        dispatch({ type: "SET_GAME", payload: game });
-      } catch (error) {
-        console.error("Error loading questions:", error);
-        dispatch({ type: "SET_ERROR", payload: "Error loading questions" });
-      }
-    };
-
-    if (
-      state.players[user?.uid ?? ""]?.isHost &&
-      state.questions.length === 0
-    ) {
-      loadQuestions();
-    }
-  }, [state.players, user?.uid, state.questions.length, gameCode, dispatch]);
+  const { state: gameState, data: gameData } = game;
 
   const handleStartGame = async () => {
-    if (!gameCode || !user || !state.id) return;
+    if (gameState == null) return;
 
     try {
-      await db.games.update(gameCode, {
-        status: "playing",
-        currentQuestionStartedAt: Date.now(),
-      });
-      dispatch({ type: "START_GAME" });
+      gameState.start();
     } catch (error) {
       console.error("Error starting game:", error);
-      dispatch({ type: "SET_ERROR", payload: "Error starting game" });
+      setError("Error starting game");
     }
   };
 
   const handleEndGame = async () => {
-    if (!gameCode || !user || !state.id) return;
+    if (gameState == null) return;
 
     try {
-      await db.games.update(gameCode, {
-        status: "finished",
-      });
-      dispatch({ type: "END_GAME" });
+      gameState.end();
     } catch (error) {
       console.error("Error ending game:", error);
-      dispatch({ type: "SET_ERROR", payload: "Error ending game" });
+      setError("Error ending game");
     }
   };
 
   const handleQuestionAdd = async (formData: any) => {
-    if (!gameCode || !user || !state.id) return;
-
+    if (gameState == null) return;
+    setIsLoading(true);
     try {
-      const options = [];
-      let i = 0;
-      while (formData[`option${i}`] !== undefined) {
-        options.push(formData[`option${i}`]);
-        i++;
-      }
-
       const newQuestion: QuestionSchema = {
         id: crypto.randomUUID(),
         text: formData.questionText,
-        options,
+        options: formData.options,
         correctOption: Number.parseInt(formData.correctAnswer),
-        timeLimit: Number(formData.timeLimit),
+        timeLimit: formData.timeLimit ? Number(formData.timeLimit) : null,
       };
-
-      const updatedQuestions = [...state.questions, newQuestion];
-      await db.games.update(gameCode, {
-        questions: updatedQuestions,
-      });
-
-      dispatch({
-        type: "SET_GAME",
-        payload: { ...state, questions: updatedQuestions },
-      });
+      await gameState.question.add(newQuestion);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error adding question:", error);
-      dispatch({ type: "SET_ERROR", payload: "Error adding question" });
+      setError("Error adding question");
+      setIsLoading(false);
     }
   };
 
   const handleQuestionRemove = async (questionId: string) => {
-    if (!gameCode || !user || !state.id) return;
+    if (gameState == null || gameData == null) return;
 
     try {
-      const updatedQuestions = state.questions.filter(
-        (q) => q.id !== questionId,
-      );
-      await db.games.update(gameCode, {
-        questions: updatedQuestions,
-      });
-
-      dispatch({
-        type: "SET_GAME",
-        payload: { ...state, questions: updatedQuestions },
-      });
+      gameState.question.remove(questionId);
     } catch (error) {
       console.error("Error removing question:", error);
-      dispatch({ type: "SET_ERROR", payload: "Error removing question" });
+      setError("Error removing question");
     }
   };
 
   const handleQuestionReorder = async (oldIndex: number, newIndex: number) => {
-    if (!gameCode || !user || !state.id) return;
-
     try {
-      const newQuestions = [...state.questions];
-      const [movedQuestion] = newQuestions.splice(oldIndex, 1);
-      newQuestions.splice(newIndex, 0, movedQuestion);
-
-      await db.games.update(gameCode, {
-        questions: newQuestions,
-      });
-
-      dispatch({
-        type: "SET_GAME",
-        payload: { ...state, questions: newQuestions },
-      });
+      gameState.question.reorder(oldIndex, newIndex);
     } catch (error) {
       console.error("Error reordering questions:", error);
-      dispatch({ type: "SET_ERROR", payload: "Error reordering questions" });
+      setError("Error reordering questions");
     }
   };
 
   const handleNextQuestion = async () => {
-    if (!gameCode || !user || !state.id) return;
+    if (gameState == null) return;
 
     try {
-      const nextQuestionIndex = state.currentQuestionIndex + 1;
-      const isLastQuestion = nextQuestionIndex >= state.questions.length;
-
-      const updates: Record<string, any> = {
-        currentQuestionIndex: nextQuestionIndex,
-        status: isLastQuestion ? "finished" : "playing",
-        currentQuestionStartedAt: Date.now(),
-      };
-
-      // Update scores for all players
-      Object.entries(state.players).forEach(([playerId, player]) => {
-        if (player.hasAnswered && !player.isHost) {
-          updates[`players.${playerId}.score`] =
-            (player.score || 0) + (player.lastQuestionScore || 0);
-        }
-        updates[`players.${playerId}.hasAnswered`] = false;
-        updates[`players.${playerId}.lastAnswerCorrect`] = false;
-        updates[`players.${playerId}.lastQuestionScore`] = 0;
-        updates[`players.${playerId}.responseTime`] = 0;
-      });
-
-      await db.games.update(gameCode, updates);
-      dispatch({ type: "NEXT_QUESTION" });
-
-      if (isLastQuestion && !state.players[user.uid]?.isHost) {
-        navigate(`/results/${gameCode}`);
-      }
+      gameState.question.next();
     } catch (error) {
       console.error("Error moving to next question:", error);
-      dispatch({ type: "SET_ERROR", payload: "Error moving to next question" });
+      setError("Error moving to next question");
     }
   };
 
   const handleToggleLateJoin = async (checked: boolean) => {
-    if (!gameCode) return;
+    if (gameState == null) return;
     try {
-      await db.games.update(gameCode, {
-        allowLateJoin: checked,
-      });
-      dispatch({
-        type: "SET_GAME",
-        payload: { ...state, allowLateJoin: checked },
-      });
+      gameState.settings.allowLateJoin(checked);
     } catch (error) {
       console.error("Error updating late join setting:", error);
-      dispatch({
-        type: "SET_ERROR",
-        payload: "Error updating late join setting",
-      });
+      setError("Error updating late join setting");
     }
   };
 
-  if (state.isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (state.error) {
+  if (error) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Card>
           <CardHeader>
             <CardTitle>Error</CardTitle>
           </CardHeader>
-          <CardContent>{state.error}</CardContent>
+          <CardContent>{error}</CardContent>
           <CardFooter>
             <Button onClick={() => navigate("/")}>Go Home</Button>
           </CardFooter>
@@ -296,7 +136,7 @@ function LobbyPage() {
     );
   }
 
-  if (!state.id || !gameCode) {
+  if (!gameData?.id || !gameCode) {
     return (
       <div className="flex h-screen items-center justify-center">
         <p className="text-destructive">Game not found</p>
@@ -304,8 +144,8 @@ function LobbyPage() {
     );
   }
 
-  const isHost = isGameHost(state, user?.uid);
-  const currentQuestion = state.questions[state.currentQuestionIndex];
+  const isHost = isGameHost(gameData, user?.uid);
+  const currentQuestion = gameData.questions[gameData.currentQuestionIndex];
 
   return (
     <div className="w-full max-w-screen-xl p-4">
@@ -315,7 +155,7 @@ function LobbyPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <GameControls
-            game={state}
+            game={gameData}
             gameCode={gameCode}
             userId={user?.uid}
             onStartGame={handleStartGame}
@@ -329,18 +169,19 @@ function LobbyPage() {
       </Card>
 
       <div className="mt-8 grid gap-8 md:grid-cols-2">
-        <PlayerList game={state} />
+        <PlayerList game={gameData} />
 
-        {isHost && state.status === "finished" ? (
-          <LobbyGameResults game={state} />
+        {isHost && gameData.status === "finished" ? (
+          <LobbyGameResults game={gameData} />
         ) : (
           isHost && (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                 <CardTitle>Questions</CardTitle>
-                {state.status === "playing" && (
+                {gameData.status === "playing" && (
                   <Button onClick={handleNextQuestion}>
-                    {state.currentQuestionIndex === state.questions.length - 1
+                    {gameData.currentQuestionIndex ===
+                    gameData.questions.length - 1
                       ? "End Game"
                       : "Next Question"}
                   </Button>
@@ -349,29 +190,29 @@ function LobbyPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <AddQuestionDialog onSubmit={handleQuestionAdd} />
-                  {state.isLoading && (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  )}
+                  {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                 </div>
                 <QuestionsQueue
-                  questions={state.questions}
+                  questions={gameData.questions}
                   onRemoveQuestion={handleQuestionRemove}
                   onReorder={handleQuestionReorder}
                   currentQuestionIndex={
-                    state.status === "playing" ? state.currentQuestionIndex : -1
+                    gameData.status === "playing"
+                      ? gameData.currentQuestionIndex
+                      : -1
                   }
                   isHost={isHost}
                 />
               </CardContent>
-              {state.status === "playing" && currentQuestion && (
+              {gameData.status === "playing" && currentQuestion && (
                 <CardFooter className="border-t pt-6">
                   <div className="w-full space-y-4">
                     <h3 className="font-semibold">Current Question</h3>
                     <p>{currentQuestion.text}</p>
-                    {state.currentQuestionStartedAt && (
+                    {gameData.currentQuestionStartedAt && (
                       <QuestionTimer
                         timeLimit={currentQuestion.timeLimit}
-                        startedAt={state.currentQuestionStartedAt}
+                        startedAt={gameData.currentQuestionStartedAt}
                         onTimeUp={() => {}}
                       />
                     )}

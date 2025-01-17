@@ -4,6 +4,13 @@
 
 AI proompted realtime multiplayer quiz game.
 
+### Notes
+
+- I started this project with the idea of proompting the entire thing.
+- Loved it at first, super quick iterations and basic funcitonality.
+- Hated it because I ended up just wrestling with prompts and the AI agents trying to redesign the layout with every edit.
+- Ended up writing the core functionality from scratch.
+
 ## TODO
 
 - [x] Add ability to set a timer per question
