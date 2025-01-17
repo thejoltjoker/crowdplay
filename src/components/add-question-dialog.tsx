@@ -205,7 +205,7 @@ const AddQuestionDialog: React.FC<AddQuestionDialogProps> = ({
                             <Input
                               placeholder={`Enter option ${index + 1}`}
                               {...field}
-                              value={field.value}
+                              value={field.value?.toString() ?? ""}
                             />
                           </FormControl>
                         </div>
