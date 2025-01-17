@@ -1,4 +1,3 @@
-import { onSnapshot } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -13,7 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { db, zodConverter } from "@/lib/firebase/firestore";
+import { db } from "@/lib/firebase/firestore";
+import { orderBy } from "firebase/firestore";
 import { playerSchema } from "@/lib/schemas/player";
 
 export default function LeaderboardPage() {
@@ -22,34 +22,28 @@ export default function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const leaderboardQuery = db.players.withConverter(
-      zodConverter(playerSchema),
-    );
-
-    const unsubscribe = onSnapshot(
-      leaderboardQuery,
-      (snapshot) => {
-        const users = snapshot.docs.map((doc) => doc.data());
-        // Sort users by total score, with 0 scores at the bottom
-        const sortedUsers = users.sort((a, b) => {
-          if (a.totalScore === 0 && b.totalScore === 0) {
-            return a.displayName.localeCompare(b.displayName);
-          }
-          if (a.totalScore === 0) return 1;
-          if (b.totalScore === 0) return -1;
-          return b.totalScore - a.totalScore;
-        });
-        setPlayers(sortedUsers);
+    async function fetchPlayers() {
+      try {
+        const querySnapshot = await db.players.query(
+          orderBy("stats.totalScore", "desc"),
+        );
+        const sortedPlayers = querySnapshot.docs
+          .map((doc) => {
+            const data = doc.data();
+            const result = playerSchema.safeParse(data);
+            return result.success ? result.data : null;
+          })
+          .filter((player): player is Player => player !== null);
+        setPlayers(sortedPlayers);
         setLoading(false);
-      },
-      (err) => {
-        console.error("Error fetching leaderboard:", err);
-        setError(err.message);
+      } catch (err) {
+        console.error("Error fetching players:", err);
+        setError(err instanceof Error ? err.message : "Failed to load players");
         setLoading(false);
-      },
-    );
+      }
+    }
 
-    return () => unsubscribe();
+    fetchPlayers();
   }, []);
 
   if (error) {
