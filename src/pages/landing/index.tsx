@@ -46,10 +46,7 @@ export function LandingPage() {
   const handleCreateGame = async () => {
     if (!user) return;
     try {
-      const code = await createGame(
-        user.uid,
-        player?.username ?? "Anonymous User",
-      );
+      const code = await createGame(user.uid, player?.username ?? "Steve");
       navigate(`/lobby/${code}`);
     } catch (error) {
       console.error("Error creating game:", error);
@@ -59,7 +56,7 @@ export function LandingPage() {
   const handleJoinGame = async (code: string) => {
     if (!user) return;
     try {
-      await joinGame(code, user.uid, player?.username ?? "Anonymous User");
+      await joinGame(code, user.uid, player?.username ?? "Steve");
       navigate(`/lobby/${code}`);
     } catch (error) {
       console.error("Error joining game:", error);
@@ -164,18 +161,13 @@ export function LandingPage() {
 
             {/* Authentication Section */}
             <div className="space-y-2">
-              {isAnonymous ? (
+              {isAnonymous && (
                 <Button
                   className="w-full uppercase"
                   variant="outline"
                   onClick={handleGoogleSignIn}
                 >
                   Sign in with Google
-                </Button>
-              ) : (
-                <Button className="w-full" variant="outline" onClick={signOut}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
                 </Button>
               )}
             </div>

@@ -141,10 +141,6 @@ export function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre>
-            RAW stats:
-            {JSON.stringify(player?.stats, null, 2)}
-          </pre>
           {isLoadingStats ? (
             <div className="text-sm text-muted-foreground">
               Loading stats...

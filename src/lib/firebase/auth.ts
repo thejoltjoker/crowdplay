@@ -6,6 +6,7 @@ import type { PlayerSchema } from "@/lib/schemas/player";
 import { auth } from "@/lib/firebase";
 
 import { db } from "./firestore";
+import { randomString } from "../helpers/random-string";
 
 const USERNAME_KEY = "crowdplay_username";
 export const googleProvider = new GoogleAuthProvider();
@@ -19,7 +20,7 @@ export async function signInWithGoogle(player?: PlayerSchema | null) {
     if (!userDoc.exists()) {
       const data: PlayerSchema = {
         id: result.user.uid,
-        username: storedUsername ?? "Anonymous User",
+        username: storedUsername ?? randomString("_"),
         uid: result.user.uid,
         role: player?.role ?? "player",
         createdAt: Timestamp.now(),

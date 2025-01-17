@@ -8,7 +8,7 @@ import type { GameSchema } from "@/lib/schemas/game";
 
 import AddQuestionDialog from "@/components/add-question-dialog";
 import { GameControls } from "@/components/game-controls";
-import { GameResults } from "@/components/game-results";
+import { LobbyGameResults } from "@/components/lobby-game-results";
 import { PlayerList } from "@/components/player-list";
 import { QuestionTimer } from "@/components/question-timer";
 import QuestionsQueue from "@/components/questions-queue";
@@ -318,7 +318,7 @@ function LobbyPage() {
         <PlayerList game={gameData} />
 
         {isHost && gameData.status === "finished" ? (
-          <GameResults game={gameData} />
+          <LobbyGameResults game={gameData} />
         ) : (
           isHost && (
             <Card>

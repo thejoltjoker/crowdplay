@@ -4,15 +4,15 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { calculatePlayerScores } from "@/lib/helpers/game-state";
 
-interface GameResultsProps {
+interface LobbyGameResultsProps {
   game: GameSchema;
 }
 
-export function GameResults({ game }: GameResultsProps) {
+export function LobbyGameResults({ game }: LobbyGameResultsProps) {
   const rankedPlayers = calculatePlayerScores(game);
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Game Results</CardTitle>
       </CardHeader>
@@ -20,16 +20,13 @@ export function GameResults({ game }: GameResultsProps) {
         <div className="space-y-4">
           <h3 className="font-semibold">Final Scores</h3>
           <ul className="space-y-2">
-            {rankedPlayers.map(player => (
+            {rankedPlayers.map((player) => (
               <li
                 key={player.id}
                 className="flex items-center justify-between rounded bg-muted p-2"
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {player.rank}
-                    .
-                  </span>
+                  <span className="font-medium">{player.rank}.</span>
                   <span>{player.name}</span>
                 </div>
                 <Badge variant="secondary">
