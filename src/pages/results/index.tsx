@@ -1,4 +1,4 @@
-import { doc, onSnapshot } from "firebase/firestore";
+import { onSnapshot } from "firebase/firestore";
 import { Loader2, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -7,8 +7,7 @@ import type { GameSchema } from "@/lib/schemas/game";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { firestore } from "@/lib/firebase";
-import { gameConverter } from "@/lib/firebase/firestore";
+import { db } from "@/lib/firebase/firestore";
 
 function ResultsPage() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -25,7 +24,7 @@ function ResultsPage() {
     }
 
     const unsubscribe = onSnapshot(
-      doc(firestore, "games", gameId).withConverter(gameConverter),
+      db.games.getDocRef(gameId),
       (doc) => {
         if (!doc.exists()) {
           setError("Game not found");

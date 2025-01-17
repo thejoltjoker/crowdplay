@@ -1,20 +1,15 @@
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { onSnapshot, updateDoc } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import type { QuestionSchema } from "@/lib/schemas";
 import type { GameSchema } from "@/lib/schemas/game";
-import type { Schema } from "@/lib/schemas/question";
 
 import { QuestionTimer } from "@/components/question-timer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { firestore } from "@/lib/firebase";
-import {
-  gameConverter,
-  joinGame,
-  updateUserStats,
-} from "@/lib/firebase/firestore";
+import { db, joinGame, updateUserStats } from "@/lib/firebase/firestore";
 import { useAuth } from "@/providers/auth";
 
 function GamePage() {
@@ -24,7 +19,9 @@ function GamePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [gameData, setGameData] = useState<GameSchema | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState<Schema | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<QuestionSchema | null>(
+    null,
+  );
   const [hasAnswered, setHasAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isJoining, setIsJoining] = useState(false);
@@ -46,7 +43,7 @@ function GamePage() {
       = username || (isAnonymous ? "Anonymous" : user.displayName || "Unknown");
 
     const unsubscribe = onSnapshot(
-      doc(firestore, "games", gameCode).withConverter(gameConverter),
+      db.games.getDocRef(gameCode),
       async (doc) => {
         if (!doc.exists()) {
           setError("Game not found");
@@ -133,9 +130,7 @@ function GamePage() {
     }
 
     try {
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
+      const gameRef = db.games.getDocRef(gameCode);
 
       // Calculate response time in milliseconds
       const responseTime = Date.now() - gameData.currentQuestionStartedAt;
@@ -195,9 +190,7 @@ function GamePage() {
     }
 
     try {
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
+      const gameRef = db.games.getDocRef(gameCode);
       await updateDoc(gameRef, {
         [`players.${user.uid}.hasAnswered`]: true,
         [`players.${user.uid}.lastAnswerCorrect`]: false,
@@ -225,9 +218,7 @@ function GamePage() {
       return;
 
     try {
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
+      const gameRef = db.games.getDocRef(gameCode);
       const nextQuestionIndex = gameData.currentQuestionIndex + 1;
       const isLastQuestion = nextQuestionIndex >= gameData.questions.length;
 

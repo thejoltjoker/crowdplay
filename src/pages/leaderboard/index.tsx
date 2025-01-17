@@ -82,14 +82,14 @@ export default function LeaderboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {players.length === 0
+                    {players?.length === 0
                       ? (
                           <TableRow className="py-4 text-center text-muted-foreground">
                             <TableCell colSpan={4}>No players yet</TableCell>
                           </TableRow>
                         )
                       : (
-                          players.map((player, index) => (
+                          players?.map((player, index) => (
                             <TableRow
                               key={player.uid}
                               className={

@@ -8,6 +8,7 @@ import {
   getLocalStats,
   saveLocalStats,
 } from "@/lib/helpers/local-stats";
+import { randomString } from "@/lib/helpers/random-string";
 import {
   type PlayerSchema,
   playerSchema,
@@ -35,7 +36,7 @@ export interface PlayerProviderProps {
 }
 
 export function PlayerProvider({ children }: PlayerProviderProps) {
-  const { user, isAnonymous, username } = useAuth();
+  const { user, isAnonymous } = useAuth();
   const [playerData, setPlayerData] = useState<PlayerSchema | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -62,7 +63,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       const anonymousPlayerData: PlayerSchema = {
         id: crypto.randomUUID(),
         uid: user.uid,
-        username,
+        username: randomString("PP"),
         role: "player",
         createdAt: now,
         updatedAt: now,
@@ -100,7 +101,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     );
 
     return () => unsubscribe();
-  }, [user?.uid, isAnonymous, username]);
+  }, [user?.uid, isAnonymous]);
 
   const handleUpdateStats = async (gameScore: number, won: boolean) => {
     if (!user?.uid)

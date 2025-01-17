@@ -20,19 +20,10 @@ import { usePlayer } from "@/providers/player";
 
 export function LandingPage() {
   const navigate = useNavigate();
-  const { user, username, setUsername, signOut, isAnonymous } = useAuth();
+  const { user, signOut, isAnonymous } = useAuth();
   const { player } = usePlayer();
-  const [tempUsername, setTempUsername] = useState(username || "");
-  const [isEditing, setIsEditing] = useState(!username);
   const [activeGames, setActiveGames] = useState<GameSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (username) {
-      setTempUsername(username);
-      setIsEditing(false);
-    }
-  }, [username]);
 
   useEffect(() => {
     const loadActiveGames = async () => {
@@ -55,10 +46,10 @@ export function LandingPage() {
   }, []);
 
   const handleCreateGame = async () => {
-    if (!user || !tempUsername)
+    if (!user)
       return;
     try {
-      const code = await createGame(user.uid, tempUsername);
+      const code = await createGame(user.uid, username ?? "Anonymous User");
       navigate(`/lobby/${code}`);
     }
     catch (error) {
@@ -67,22 +58,15 @@ export function LandingPage() {
   };
 
   const handleJoinGame = async (code: string) => {
-    if (!user || !tempUsername)
+    if (!user)
       return;
     try {
-      await joinGame(code, user.uid, tempUsername);
+      await joinGame(code, user.uid, username ?? "Anonymous User");
       navigate(`/lobby/${code}`);
     }
     catch (error) {
       console.error("Error joining game:", error);
     }
-  };
-
-  const handleUsernameSubmit = () => {
-    if (tempUsername && tempUsername !== username) {
-      setUsername(tempUsername);
-    }
-    setIsEditing(false);
   };
 
   const handleGoogleSignIn = async () => {

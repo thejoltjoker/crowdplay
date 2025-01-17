@@ -22,37 +22,35 @@ import {
   where,
 } from "firebase/firestore";
 import { nanoid } from "nanoid";
-import { z, type ZodSchema } from "zod";
+import { z } from "zod";
 
 import type { GameSchema } from "@/lib/schemas/game";
-import type { Schema } from "@/lib/schemas/question";
+import type { QuestionSchema } from "@/lib/schemas/question";
 
 import { firestore as conn } from "@/lib/firebase";
-import { getLocalStats, updateLocalStats } from "@/lib/helpers/local-stats";
 import { gameSchema } from "@/lib/schemas/game";
-import { questionSchema } from "@/lib/schemas/question";
-
-import type { PlayerSchema } from "../schemas/player";
 
 import { generateGameCode } from "../helpers/generate-game-code";
 import { playerSchema } from "../schemas/player";
 
-export function zodConverter<T>(
-  zodSchema: ZodSchema<T>,
-): FirestoreDataConverter<T> {
+export function zodConverter<T extends z.ZodTypeAny>(
+  schema: T,
+): FirestoreDataConverter<z.infer<T>> {
   return {
-    toFirestore: (data: T) => {
+    toFirestore: (data: z.infer<T>) => {
       try {
-        return zodSchema.parse(data) as DocumentData;
-      } catch (error) {
+        return schema.parse(data) as DocumentData;
+      }
+      catch (error) {
         console.error("Invalid data:", error);
         throw error;
       }
     },
     fromFirestore: (snap: QueryDocumentSnapshot) => {
       try {
-        return zodSchema.parse(snap.data()) as T;
-      } catch (error) {
+        return schema.parse(snap.data()) as z.infer<T>;
+      }
+      catch (error) {
         console.error("Invalid data:", error);
         throw error;
       }
@@ -62,7 +60,7 @@ export function zodConverter<T>(
 export class FirestoreCollection<
   T extends z.ZodTypeAny & { shape: { id: z.ZodString } },
 > {
-  public ref: CollectionReference<z.infer<T>>;
+  public ref: CollectionReference<T>;
   private schema: T;
   constructor(collectionName: string, schema: T) {
     this.ref = collection(conn, collectionName).withConverter(
@@ -71,25 +69,23 @@ export class FirestoreCollection<
     this.schema = schema;
   }
 
-  getDocRef(id: string, schema?: z.ZodTypeAny): DocumentReference<T> {
-    return doc(this.ref, id).withConverter(
-      zodConverter(schema ?? this.schema),
-    ) as DocumentReference<T>;
+  getDocRef(id: string): DocumentReference<z.infer<T>> {
+    return doc(this.ref, id).withConverter(zodConverter(this.schema));
   }
 
-  async getDoc(id: string): Promise<DocumentSnapshot<T>> {
+  async getDoc(id: string): Promise<DocumentSnapshot<z.infer<T>>> {
     const ref = this.getDocRef(id);
     return await getDoc(ref);
   }
 
   async query(
     ...queryConstraints: QueryConstraint[]
-  ): Promise<QuerySnapshot<T>> {
-    return await getDocs(
+  ): Promise<QuerySnapshot<z.infer<T>>> {
+    return (await getDocs(
       query(this.ref, ...queryConstraints).withConverter(
         zodConverter(this.schema),
       ),
-    );
+    )) as QuerySnapshot<z.infer<T>>;
   }
 
   async setDoc(id: string, data: T): Promise<void> {
@@ -97,9 +93,14 @@ export class FirestoreCollection<
   }
 
   // Abstractions
-  async getOne(id: string): Promise<T> {
+  async getOne(id: string): Promise<z.infer<T>> {
     const docSnap = await this.getDoc(id);
-    return docSnap.data() as T;
+    return docSnap.data();
+  }
+
+  async getAll(): Promise<z.infer<T>[]> {
+    const querySnapshot = await this.query();
+    return querySnapshot.docs.map(doc => doc.data());
   }
 
   async create(data: z.infer<T>): Promise<void> {
@@ -107,12 +108,10 @@ export class FirestoreCollection<
   }
 
   async update(id: string, data: z.infer<T>["partial"]): Promise<void> {
-    const partialSchema =
-      this.schema instanceof z.ZodObject ? this.schema.partial() : this.schema;
+    const partialSchema
+      = this.schema instanceof z.ZodObject ? this.schema.partial() : this.schema;
 
-    const docRef = doc(this.ref, id).withConverter(
-      zodConverter(partialSchema),
-    ) as DocumentReference<T>;
+    const docRef = doc(this.ref, id).withConverter(zodConverter(partialSchema));
 
     const validatedData = partialSchema.parse(data);
     await updateDoc(docRef, validatedData);
@@ -122,10 +121,9 @@ export class FirestoreCollection<
 export const db = {
   players: new FirestoreCollection("players", playerSchema),
   games: new FirestoreCollection("games", gameSchema),
-  questions: new FirestoreCollection("questions", questionSchema),
 };
 
-const defaultQuestions: Omit<Schema, "id">[] = [
+const defaultQuestions: Omit<QuestionSchema, "id">[] = [
   {
     text: "What is the capital of France?",
     options: ["London", "Berlin", "Paris", "Madrid"],
@@ -161,15 +159,14 @@ export async function createGame(
     const gameCode = customGameCode || generateGameCode();
 
     // Check if game code already exists
-    const gameRef = doc(conn, "games", gameCode).withConverter(gameConverter);
-    const gameDoc = await getDoc(gameRef);
+    const gameDoc = await db.games.getDoc(gameCode);
 
     if (gameDoc.exists()) {
       throw new Error("Game code already exists");
     }
 
     // Add default questions with generated IDs
-    const questions = defaultQuestions.map((q) => ({
+    const questions = defaultQuestions.map(q => ({
       ...q,
       id: nanoid(),
     }));
@@ -194,9 +191,10 @@ export async function createGame(
       allowLateJoin: false,
     };
 
-    await setDoc(gameRef, game);
+    await db.games.create(game);
     return gameCode;
-  } catch (error) {
+  }
+  catch (error) {
     console.error("Error creating game:", error);
     throw error;
   }
@@ -208,8 +206,8 @@ export async function joinGame(
   playerName: string,
 ): Promise<void> {
   try {
-    const gameRef = doc(conn, "games", gameCode).withConverter(gameConverter);
-    const gameDoc = await getDoc(gameRef);
+    const gameRef = db.games.getDocRef(gameCode);
+    const gameDoc = await db.games.getDoc(gameCode);
 
     if (!gameDoc.exists()) {
       throw new Error("Game not found");
@@ -234,69 +232,9 @@ export async function joinGame(
         hasAnswered: false,
       },
     });
-  } catch (error) {
-    console.error("Error joining game:", error);
-    throw error;
   }
-}
-
-export async function updateUserStats(
-  userId: string,
-  displayName: string,
-  gameScore: number,
-  isAnonymous: boolean = false,
-  isGameFinished: boolean = false,
-): Promise<void> {
-  try {
-    // If anonymous, only update local storage
-    if (isAnonymous) {
-      updateLocalStats(gameScore, isGameFinished);
-      return;
-    }
-
-    const playerRef = doc(conn, "players", userId).withConverter(
-      zodConverter(playerSchema),
-    );
-    const playerDoc = await getDoc(playerRef);
-    const localStats = getLocalStats();
-
-    if (playerDoc.exists()) {
-      const currentStats = playerDoc.data();
-      const newTotalScore =
-        currentStats.totalScore + gameScore + (localStats?.totalScore || 0);
-      const newGamesPlayed =
-        currentStats.gamesPlayed + 1 + (localStats?.gamesPlayed || 0);
-      const data = {
-        stats: {
-          totalScore: newTotalScore,
-          gamesPlayed: newGamesPlayed,
-          lastGamePlayed: Date.now(),
-          gamesWon: currentStats.gamesWon + (isGameFinished ? 1 : 0),
-        },
-      };
-      await updateDoc(playerRef, data);
-    } else {
-      // For new users, include local stats if they exist
-      const totalScore = gameScore + (localStats?.totalScore || 0);
-      const gamesPlayed = 1 + (localStats?.gamesPlayed || 0);
-
-      const data: PlayerSchema = {
-        uid: userId,
-        username: displayName,
-        role: "player",
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        stats: {
-          totalScore,
-          gamesPlayed,
-          lastGamePlayed: Date.now(),
-          gamesWon: isGameFinished ? 1 : 0,
-        },
-      };
-      await setDoc(playerRef, data);
-    }
-  } catch (error) {
-    console.error("Error updating user stats:", error);
+  catch (error) {
+    console.error("Error joining game:", error);
     throw error;
   }
 }
@@ -310,8 +248,9 @@ export async function getActiveGames(): Promise<z.infer<typeof gameSchema>[]> {
     ];
 
     const querySnapshot = await db.games.query(...q);
-    return querySnapshot.docs.map((doc) => doc.data());
-  } catch (error) {
+    return querySnapshot.docs.map(doc => doc.data());
+  }
+  catch (error) {
     console.error("Error getting active games:", error);
     throw error;
   }

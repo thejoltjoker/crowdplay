@@ -4,7 +4,7 @@ import type { PlayerSchema } from "@/lib/schemas/player";
 
 import { auth } from "@/lib/firebase";
 
-import { db, docs } from "./firestore";
+import { db } from "./firestore";
 
 export const googleProvider = new GoogleAuthProvider();
 
@@ -12,11 +12,11 @@ export async function signInWithGoogle(player?: PlayerSchema | null) {
   try {
     const result = await signInWithPopup(auth, googleProvider);
 
-    const userDoc = await docs.players(result.user.uid);
+    const userDoc = await db.players.getDoc(result.user.uid);
 
     if (!userDoc.exists()) {
       const data: PlayerSchema = {
-        id: crypto.randomUUID(),
+        id: player?.uid ?? crypto.randomUUID(),
         username: player?.username ?? "Anonymous User",
         uid: player?.uid ?? crypto.randomUUID(),
         role: player?.role ?? "player",

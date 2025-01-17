@@ -1,9 +1,9 @@
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { onSnapshot } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import type { Schema } from "@/lib/schemas";
+import type { QuestionSchema } from "@/lib/schemas";
 import type { GameSchema } from "@/lib/schemas/game";
 
 import AddQuestionDialog from "@/components/add-question-dialog";
@@ -20,13 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { firestore } from "@/lib/firebase";
-import {
-  addQuestion,
-  fetchQuestions,
-  gameConverter,
-  joinGame,
-} from "@/lib/firebase/firestore";
+import { db, joinGame } from "@/lib/firebase/firestore";
 import { isGameHost } from "@/lib/helpers/game-state";
 import { useAuth } from "@/providers/auth";
 
@@ -37,7 +31,9 @@ function LobbyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [gameData, setGameData] = useState<GameSchema | null>(null);
-  const [availableQuestions, setAvailableQuestions] = useState<Schema[]>([]);
+  const [availableQuestions, setAvailableQuestions] = useState<
+    QuestionSchema[]
+  >([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
 
   useEffect(() => {
@@ -45,7 +41,7 @@ function LobbyPage() {
       return;
 
     const unsubscribe = onSnapshot(
-      doc(firestore, "games", gameCode).withConverter(gameConverter),
+      db.games.getDocRef(gameCode),
       async (doc) => {
         if (!doc.exists()) {
           setError("Game not found");
@@ -101,7 +97,10 @@ function LobbyPage() {
     const loadQuestions = async () => {
       try {
         setLoadingQuestions(true);
-        const questions = await fetchQuestions();
+        if (!gameCode)
+          throw new Error("Game code is required");
+        const game = await db.games.getOne(gameCode);
+        const questions = game.questions;
         setAvailableQuestions(questions);
       }
       catch (error) {
@@ -126,10 +125,7 @@ function LobbyPage() {
       return;
 
     try {
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
-      await updateDoc(gameRef, {
+      await db.games.update(gameCode, {
         status: "playing",
         currentQuestionStartedAt: Date.now(),
       });
@@ -145,10 +141,7 @@ function LobbyPage() {
       return;
 
     try {
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
-      await updateDoc(gameRef, {
+      await db.games.update(gameCode, {
         status: "finished",
       });
     }
@@ -170,17 +163,14 @@ function LobbyPage() {
         i++;
       }
 
-      const newQuestion = await addQuestion({
+      const newQuestion: QuestionSchema = {
+        id: crypto.randomUUID(),
         text: formData.questionText,
         options,
         correctOption: Number.parseInt(formData.correctAnswer),
         timeLimit: Number(formData.timeLimit),
-      });
-
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
-      await updateDoc(gameRef, {
+      };
+      await db.games.update(gameCode, {
         questions: [...gameData.questions, newQuestion],
       });
     }
@@ -195,10 +185,7 @@ function LobbyPage() {
       return;
 
     try {
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
-      await updateDoc(gameRef, {
+      await db.games.update(gameCode, {
         questions: gameData.questions.filter(q => q.id !== questionId),
       });
     }
@@ -217,10 +204,7 @@ function LobbyPage() {
       const [movedQuestion] = newQuestions.splice(oldIndex, 1);
       newQuestions.splice(newIndex, 0, movedQuestion);
 
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
-      await updateDoc(gameRef, {
+      await db.games.update(gameCode, {
         questions: newQuestions,
       });
     }
@@ -235,9 +219,6 @@ function LobbyPage() {
       return;
 
     try {
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
       const nextQuestionIndex = gameData.currentQuestionIndex + 1;
       const isLastQuestion = nextQuestionIndex >= gameData.questions.length;
 
@@ -261,7 +242,7 @@ function LobbyPage() {
         updates[`players.${playerId}.responseTime`] = 0;
       });
 
-      await updateDoc(gameRef, updates);
+      await db.games.update(gameCode, updates);
 
       if (isLastQuestion && !gameData.players[user.uid]?.isHost) {
         navigate(`/results/${gameCode}`);
@@ -277,10 +258,7 @@ function LobbyPage() {
     if (!gameCode)
       return;
     try {
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
-      await updateDoc(gameRef, {
+      await db.games.update(gameCode, {
         allowLateJoin: checked,
       });
     }
@@ -295,10 +273,7 @@ function LobbyPage() {
       return;
 
     try {
-      const gameRef = doc(firestore, "games", gameCode).withConverter(
-        gameConverter,
-      );
-      await updateDoc(gameRef, {
+      await db.games.update(gameCode, {
         status: "waiting",
         currentQuestionIndex: 0,
         questions: [],

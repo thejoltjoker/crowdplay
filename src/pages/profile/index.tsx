@@ -170,7 +170,7 @@ export function ProfilePage() {
                         <p className="text-2xl font-bold">
                           {player.stats.lastGamePlayed
                             ? Temporal.Instant.fromEpochMilliseconds(
-                                player.stats.lastGamePlayed,
+                                player.stats.lastGamePlayed.getTime(),
                               )
                                 .toZonedDateTimeISO(Temporal.Now.timeZoneId())
                                 .toPlainDate()
